@@ -48,14 +48,26 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/parser": "^8.50.1",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "eslint": "^9.39.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "typescript": "^5.9.3",
     "vite": "6.3.5"
   },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "lint": "eslint src --ext .tsx,.ts",
+    "lint:fix": "eslint src --ext .tsx,.ts --fix",
+    "type-check": "tsc --noEmit",
     "push-to-s3": "aws s3 sync ./build s3://sonictales.com --delete",
     "flush-cloudfront": "aws cloudfront create-invalidation --distribution-id EAR77HJOGIHUT --paths \"/*\"",
-    "deploy": "vite build && npm run push-to-s3 && npm run flush-cloudfront"
+    "deploy": "npm run type-check && npm run build && npm run push-to-s3 && npm run flush-cloudfront"
   }
 }
