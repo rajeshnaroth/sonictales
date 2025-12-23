@@ -26,23 +26,23 @@ export default function App() {
   // 初期化時にlocalStorageからデータを読み込み
   useEffect(() => {
     try {
-      const savedVersion = localStorage.getItem(STORAGE_VERSION_KEY);
-      const savedWorks = localStorage.getItem(STORAGE_KEY);
+      const savedVersion = globalThis.localStorage.getItem(STORAGE_VERSION_KEY);
+      const savedWorks = globalThis.localStorage.getItem(STORAGE_KEY);
 
       // If version doesn't match or no saved works, use fresh data
       if (savedVersion !== CURRENT_VERSION || !savedWorks) {
         setWorks(initialWorks);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialWorks));
-        localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION);
+        globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(initialWorks));
+        globalThis.localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION);
       } else {
         const parsedWorks = JSON.parse(savedWorks);
         setWorks(parsedWorks);
       }
     } catch (error) {
-      console.error("Failed to load works from localStorage:", error);
+      globalThis.console.error("Failed to load works from localStorage:", error);
       setWorks(initialWorks);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialWorks));
-      localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION);
+      globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(initialWorks));
+      globalThis.localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION);
     }
   }, []);
 
@@ -50,13 +50,13 @@ export default function App() {
     setSelectedWork(work);
     setCurrentView("film-detail");
     // Scroll to top when opening film detail
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    globalThis.window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleNavigation = (view: "home" | "films" | "sounds" | "about") => {
     setCurrentView(view);
     setSelectedWork(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    globalThis.window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleAdminClick = () => {
@@ -81,9 +81,9 @@ export default function App() {
     setWorks(updatedWorks);
     // localStorageに保存
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedWorks));
+      globalThis.localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedWorks));
     } catch (error) {
-      console.error("Failed to save works to localStorage:", error);
+      globalThis.console.error("Failed to save works to localStorage:", error);
     }
   };
 
@@ -109,8 +109,8 @@ export default function App() {
           {currentView === "home" && (
             <>
               <Hero />
-              <WorksSection works={featuredFilms} onWorkClick={handleFilmClick} title="Featured Films" showSeeAll={true} onSeeAllClick={() => handleNavigation("films")} />
               <ProductsSection products={featuredProducts} title="Featured Sounds" showSeeAll={true} onSeeAllClick={() => handleNavigation("sounds")} />
+              <WorksSection works={featuredFilms} onWorkClick={handleFilmClick} title="Featured Films" showSeeAll={true} onSeeAllClick={() => handleNavigation("films")} />
             </>
           )}
 

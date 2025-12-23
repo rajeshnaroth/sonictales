@@ -44,15 +44,15 @@ export function Header({ onNavigation, onAdminClick, currentView }: HeaderProps)
             <Button variant="ghost" onClick={() => onNavigation("home")} className={`text-white hover:text-white/70 hover:bg-white/5 ${currentView === "home" ? "text-white" : "text-white/60"}`}>
               Home
             </Button>
+            <Button variant="ghost" onClick={() => onNavigation("sounds")} className={`text-white hover:text-white/70 hover:bg-white/5 ${currentView === "sounds" ? "text-white" : "text-white/60"}`}>
+              Sounds
+            </Button>
             <Button
               variant="ghost"
               onClick={() => onNavigation("films")}
               className={`text-white hover:text-white/70 hover:bg-white/5 ${["films", "film-detail"].includes(currentView) ? "text-white" : "text-white/60"}`}
             >
               Films
-            </Button>
-            <Button variant="ghost" onClick={() => onNavigation("sounds")} className={`text-white hover:text-white/70 hover:bg-white/5 ${currentView === "sounds" ? "text-white" : "text-white/60"}`}>
-              Sounds
             </Button>
             <Button variant="ghost" onClick={() => onNavigation("about")} className={`text-white hover:text-white/70 hover:bg-white/5 ${currentView === "about" ? "text-white" : "text-white/60"}`}>
               About

@@ -31,9 +31,9 @@ export function Hero() {
         </div>
 
         <p className="text-xl md:text-2xl text-white/70 mb-8 leading-relaxed">
-          Independent Cinema
+          Sound Design and Storytelling
           <br />
-          Compelling Stories, Cinematic Artistry
+          Independent Artistry
         </p>
 
         <div className="flex items-center justify-center space-x-8 text-sm text-white/50">

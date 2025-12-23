@@ -115,7 +115,9 @@ export function ProductsSection({ products, title, showSeeAll, onSeeAllClick }: 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     {product.other_metadata.free && <Download className="w-4 h-4 text-green-400" />}
-                    <span className={`text-sm ${product.other_metadata.free ? "text-green-400" : "text-blue-400"}`}>{product.other_metadata.free ? "Free Download" : "Purchase"}</span>
+                    <span className={`text-sm ${product.other_metadata.free ? "text-green-400" : "text-blue-400"}`}>
+                      {product.other_metadata.free ? "Free Download" : `Purchase for ${formatPrice(product.price)}`}
+                    </span>
                   </div>
 
                   <a
