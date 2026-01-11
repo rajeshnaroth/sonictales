@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { siteConfig } from "../data/site-config";
+import { siteConfig } from "../../data/site-config";
 import sonicTalesLogo from "@/assets/8e180fd67a0c0bd01f42002dab2e7103c2e61e1f.png";
 
 export function Hero() {

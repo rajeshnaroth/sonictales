@@ -1,5 +1,5 @@
-import { Product } from "../data/products";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { Product } from "../../../data/products";
+import { ImageWithFallback } from "../../figma/ImageWithFallback";
 import { Star, ExternalLink, Download, ArrowRight } from "lucide-react";
 
 interface ProductsSectionProps {

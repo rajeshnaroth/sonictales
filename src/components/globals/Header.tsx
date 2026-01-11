@@ -1,10 +1,10 @@
-import { Button } from "./ui/button";
+import { Button } from "../ui/button";
 import sonicTalesLogo from "@/assets/8e180fd67a0c0bd01f42002dab2e7103c2e61e1f.png";
 
 interface HeaderProps {
-  onNavigation: (view: "home" | "films" | "sounds" | "about") => void;
+  onNavigation: (view: string) => void;
   onAdminClick?: () => void;
-  currentView: "home" | "films" | "sounds" | "about" | "film-detail" | "admin-login" | "admin";
+  currentView: string;
 }
 
 export function Header({ onNavigation, onAdminClick, currentView }: HeaderProps) {
@@ -53,6 +53,9 @@ export function Header({ onNavigation, onAdminClick, currentView }: HeaderProps)
               className={`text-white hover:text-white/70 hover:bg-white/5 ${["films", "film-detail"].includes(currentView) ? "text-white" : "text-white/60"}`}
             >
               Films
+            </Button>
+            <Button variant="ghost" onClick={() => onNavigation("tools")} className={`text-white hover:text-white/70 hover:bg-white/5 ${currentView === "tools" ? "text-white" : "text-white/60"}`}>
+              Tools
             </Button>
             <Button variant="ghost" onClick={() => onNavigation("about")} className={`text-white hover:text-white/70 hover:bg-white/5 ${currentView === "about" ? "text-white" : "text-white/60"}`}>
               About

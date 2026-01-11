@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "../ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,11 +11,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger
-} from "./ui/alert-dialog";
-import { Badge } from "./ui/badge";
-import { WorkForm } from "./WorkForm";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { Work } from "../data/works";
+} from "../ui/alert-dialog";
+import { Badge } from "../ui/badge";
+import { WorkForm } from "../sections/works/WorkForm";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { Work } from "../../data/works";
 import { Pencil, Trash2, Plus, Home } from "lucide-react";
 import sonicTalesLogo from "@/assets/8e180fd67a0c0bd01f42002dab2e7103c2e61e1f.png";
 

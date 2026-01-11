@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import { Button } from "./ui/button";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { Button } from "../ui/button";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { Upload, X } from "lucide-react";
 
 interface ImageSelectorProps {

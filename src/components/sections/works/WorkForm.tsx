@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { ImageSelector } from "./ImageSelector";
-import { Work } from "../data/works";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { Textarea } from "../../ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
+import { ImageSelector } from "../../shared/ImageSelector";
+import { Work } from "../../../data/works";
 
 interface WorkFormProps {
   work?: Work;
