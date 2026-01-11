@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from "react";
 import { useAudioAnalyzer } from "./useAudioAnalyzer";
-import "./ModalAnalyzer.css";
 
 /**
  * Modal Resonance Analyzer UI Component
@@ -118,8 +117,8 @@ const ModalAnalyzer = () => {
   const isLoaded = duration > 0;
 
   return (
-    <div className="modal-analyzer min-h-screen bg-gray-900 text-gray-100 p-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+      <div className="max-w-full">
         {/* Header */}
         <Header />
 
@@ -200,7 +199,7 @@ const DropZone = ({ fileName, dragOver, onDrop, onDragOver, onDragLeave, onFileI
 );
 
 const ProgressBar = ({ stage, percent }) => (
-  <div className="bg-gray-800 rounded-lg p-3 mb-4">
+  <div className="bg-gray-900 rounded-lg p-3 mb-4">
     <div className="flex justify-between text-sm mb-1">
       <span className="text-green-400">{stage || "Processing..."}</span>
       <span className="text-gray-400">{percent}%</span>
@@ -212,7 +211,7 @@ const ProgressBar = ({ stage, percent }) => (
 );
 
 const AnalysisControls = ({ fftSize, peakThreshold, maxPartials, analyzing, duration, sampleRate, channels, onFftSizeChange, onThresholdChange, onMaxPartialsChange, onAnalyze }) => (
-  <div className="bg-gray-800 rounded-lg p-3 mb-4">
+  <div className="bg-gray-900 rounded-lg p-3 mb-4">
     <div className="grid grid-cols-2 gap-3 mb-3">
       <div>
         <label className="block text-xs text-gray-400 mb-1">FFT Size</label>
@@ -254,9 +253,9 @@ const SpectrumView = ({ spectrum, fundamental, peakThreshold, sampleRate }) => {
   const displayData = spectrum.filter((_, i) => i % step === 0).slice(0, barsToShow);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-3 mb-4">
+    <div className="bg-gray-900 rounded-lg p-3 mb-4">
       <h2 className="text-sm font-semibold mb-2 text-green-400">Spectrum • Fundamental: {fundamental.toFixed(1)} Hz</h2>
-      <div className="h-28 flex items-end gap-px bg-gray-900 rounded p-1 overflow-hidden">
+      <div className="h-28 flex items-end gap-px bg-black rounded p-1 overflow-hidden">
         {displayData.map((bin, i) => (
           <div
             key={i}
@@ -279,7 +278,7 @@ const SpectrumView = ({ spectrum, fundamental, peakThreshold, sampleRate }) => {
 };
 
 const PlaybackControls = ({ playing, onPlayOriginal, onPlaySynth, onStop, onDownload, onShowCSV }) => (
-  <div className="bg-gray-800 rounded-lg p-3 mb-4">
+  <div className="bg-gray-900 rounded-lg p-3 mb-4">
     <div className="flex gap-2 flex-wrap">
       <button onClick={onPlayOriginal} className={`px-4 py-2 rounded text-sm font-semibold transition-colors ${playing === "original" ? "bg-blue-500" : "bg-blue-600 hover:bg-blue-500"}`}>
         {playing === "original" ? "🔊 Original..." : "▶️ Original"}
@@ -302,11 +301,11 @@ const PlaybackControls = ({ playing, onPlayOriginal, onPlaySynth, onStop, onDown
 );
 
 const PartialsTable = ({ partials }) => (
-  <div className="bg-gray-800 rounded-lg p-3">
+  <div className="bg-gray-900 rounded-lg p-3">
     <h2 className="text-sm font-semibold mb-2 text-green-400">Extracted Partials ({partials.length})</h2>
     <div className="overflow-x-auto max-h-72 overflow-y-auto">
       <table className="w-full text-xs">
-        <thead className="sticky top-0 bg-gray-800">
+        <thead className="sticky top-0 bg-gray-900">
           <tr className="text-left text-gray-400 border-b border-gray-700">
             <th className="pb-2 pr-3">#</th>
             <th className="pb-2 pr-3">Freq (Hz)</th>

@@ -10,21 +10,28 @@ interface ToolsSectionProps {
 
 export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSectionProps) {
   if (currentTool === "modal-analyzer") {
-    return <ModalAnalyzer />;
+    return (
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Button variant="ghost" onClick={onBack} className="mb-8 text-white/60 hover:text-white hover:bg-white/5 p-0">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tools
+          </Button>
+          <ModalAnalyzer />
+        </div>
+      </section>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white py-20">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center mb-8">
-          <Button variant="ghost" onClick={onBack} className="text-white/60 hover:text-white mr-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <h1 className="text-4xl font-bold">Tools</h1>
+    <section className="py-20 px-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-12">
+          <h2 className="text-4xl md:text-5xl mb-6">Tools</h2>
+          <p className="text-white/60 text-lg max-w-2xl">A collection of audio production utilities for sound designers and music producers. All tools run entirely in your browser.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Modal Analyzer Tool */}
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-green-500 transition-all duration-300 cursor-pointer" onClick={() => onToolSelect("modal-analyzer")}>
             <div className="flex items-center mb-4">
@@ -58,6 +65,6 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
