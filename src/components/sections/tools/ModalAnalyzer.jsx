@@ -371,8 +371,16 @@ const CSVModal = ({ csvContent, fileName, copySuccess, onCopy, onClose }) => (
 );
 
 const Footer = () => (
-  <div className="mt-6 text-center text-gray-500 text-xs">
+  <div className="mt-6 text-center text-gray-500 text-xs space-y-3">
     <p>100% client-side processing • No audio uploaded to any server</p>
+    <div className="border-t border-gray-700 pt-3">
+      <p className="text-gray-600 leading-relaxed">
+        <strong>Disclaimer:</strong> This tool is provided "as is" without warranty of any kind, express or implied. By using this tool, you acknowledge and agree that you do so entirely at your own
+        risk. SonicTales and its affiliates shall not be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising from your use of or inability to use this
+        tool, including but not limited to loss of data, loss of profits, or damage to equipment. You are solely responsible for verifying the accuracy and suitability of any output generated. Use of
+        this tool constitutes acceptance of these terms.
+      </p>
+    </div>
   </div>
 );
 
