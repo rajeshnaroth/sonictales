@@ -1,12 +1,11 @@
+// =============================================================================
+// CUSTOM HOOK - Audio Analysis State Management
+// =============================================================================
+
 import { useState, useRef, useCallback } from "react";
 import { analyzeAudio, generateModalCSV } from "./audioUtils";
 
-/**
- * Custom hook for audio analysis and playback
- * Manages AudioContext lifecycle, file loading, analysis, and synthesis
- */
 export function useAudioAnalyzer() {
-  // State
   const [audioBuffer, setAudioBuffer] = useState(null);
   const [fileName, setFileName] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
@@ -15,88 +14,64 @@ export function useAudioAnalyzer() {
   const [fundamental, setFundamental] = useState(0);
   const [spectrum, setSpectrum] = useState(null);
   const [analysisDuration, setAnalysisDuration] = useState(0);
-  const [playing, setPlaying] = useState(null); // 'original' | 'synth' | null
+  const [effectiveDuration, setEffectiveDuration] = useState(0);
+  const [playing, setPlaying] = useState(null);
   const [error, setError] = useState(null);
 
-  // Refs
   const audioContextRef = useRef(null);
   const sourceNodeRef = useRef(null);
   const synthNodesRef = useRef([]);
 
-  /**
-   * Get or create AudioContext
-   */
   const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
-    // Resume if suspended (autoplay policy)
     if (audioContextRef.current.state === "suspended") {
       audioContextRef.current.resume();
     }
     return audioContextRef.current;
   }, []);
 
-  /**
-   * Stop all audio playback
-   */
   const stopAudio = useCallback(() => {
     if (sourceNodeRef.current) {
       try {
         sourceNodeRef.current.stop();
-      } catch (e) {
-        // Already stopped
-      }
+      } catch (e) {}
       sourceNodeRef.current = null;
     }
-
-    synthNodesRef.current.forEach((node) => {
+    synthNodesRef.current.forEach((n) => {
       try {
-        node.stop();
-      } catch (e) {
-        // Already stopped
-      }
+        n.stop();
+      } catch (e) {}
     });
     synthNodesRef.current = [];
     setPlaying(null);
   }, []);
 
-  /**
-   * Load audio file
-   */
   const loadFile = useCallback(
     async (file) => {
-      if (!file) {
-        setError("No file provided");
+      if (!file || !file.type.includes("audio")) {
+        setError("Please upload an audio file");
         return false;
       }
-
-      if (!file.type.includes("audio")) {
-        setError("Please upload an audio file (.wav, .mp3, etc.)");
-        return false;
-      }
-
       setError(null);
       stopAudio();
       setFileName(file.name);
       setPartials([]);
       setSpectrum(null);
       setAnalysisDuration(0);
-      setProgress({ stage: "Loading audio...", percent: 10 });
+      setEffectiveDuration(0);
+      setProgress({ stage: "Loading...", percent: 10 });
 
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        const ctx = getAudioContext();
-
-        setProgress({ stage: "Decoding audio...", percent: 30 });
-        const decoded = await ctx.decodeAudioData(arrayBuffer);
-
+        const buf = await file.arrayBuffer();
+        setProgress({ stage: "Decoding...", percent: 30 });
+        const decoded = await getAudioContext().decodeAudioData(buf);
         setAudioBuffer(decoded);
-        setProgress({ stage: "Ready to analyze", percent: 100 });
-
+        setProgress({ stage: "Ready", percent: 100 });
         return true;
       } catch (e) {
-        setError(`Error decoding audio file: ${e.message}`);
+        setError(`Decode error: ${e.message}`);
         setProgress({ stage: "", percent: 0 });
         return false;
       }
@@ -104,146 +79,193 @@ export function useAudioAnalyzer() {
     [stopAudio, getAudioContext]
   );
 
-  /**
-   * Run spectral analysis
-   */
+  const analyzingRef = useRef(false);
+
   const analyze = useCallback(
     async (options) => {
-      if (!audioBuffer) {
-        setError("No audio loaded");
-        return null;
-      }
-
+      if (!audioBuffer || analyzingRef.current) return null;
+      analyzingRef.current = true;
       setAnalyzing(true);
       setError(null);
-
       try {
-        const result = await analyzeAudio(audioBuffer, options, (stage, percent) => setProgress({ stage, percent }));
-
-        setPartials(result.partials);
+        const result = await analyzeAudio(audioBuffer, options, (s, p) => setProgress({ stage: s, percent: p }));
+        // Add enabled flag and original timeConstant to each partial
+        const partialsWithState = result.partials.map((p) => ({
+          ...p,
+          enabled: true,
+          originalTimeConstant: p.timeConstant
+        }));
+        setPartials(partialsWithState);
         setFundamental(result.fundamental);
         setSpectrum(result.spectrum);
         setAnalysisDuration(result.analysisDuration);
+        setEffectiveDuration(result.effectiveDuration);
         setAnalyzing(false);
-
+        analyzingRef.current = false;
         return result;
       } catch (e) {
         setError(`Analysis failed: ${e.message}`);
         setAnalyzing(false);
+        analyzingRef.current = false;
         return null;
       }
     },
     [audioBuffer]
   );
 
-  /**
-   * Play original audio
-   */
+  // Toggle a partial on/off
+  const togglePartial = useCallback(
+    (index, autoPlay = false) => {
+      setPartials((prev) => {
+        const updated = prev.map((p, i) => (i === index ? { ...p, enabled: !p.enabled } : p));
+        // Schedule auto-play after state update
+        if (autoPlay) {
+          setTimeout(() => {
+            const enabledPartials = updated.filter((p) => p.enabled);
+            if (enabledPartials.length && fundamental) {
+              // Use the playSynth logic directly with updated partials
+              playSynthWithPartials(enabledPartials);
+            }
+          }, 10);
+        }
+        return updated;
+      });
+    },
+    [fundamental]
+  );
+
+  // Play synth with specific partials (for auto-play)
+  const playSynthWithPartials = useCallback(
+    (partialsToPlay) => {
+      if (!partialsToPlay.length || !fundamental) return;
+      stopAudio();
+      const ctx = getAudioContext();
+
+      const playDuration = effectiveDuration || audioBuffer?.duration || 4;
+
+      const master = ctx.createGain();
+      master.gain.value = 0.5;
+      master.connect(ctx.destination);
+
+      const nodes = partialsToPlay.map((p) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = p.ratio * fundamental;
+
+        const amp = Math.pow(10, p.gainDb / 20) * 0.3;
+        // Use timeConstant directly - it's already in seconds
+        const tc = Math.max(0.01, p.timeConstant || 0.5);
+
+        gain.gain.setValueAtTime(amp, ctx.currentTime);
+        gain.gain.setTargetAtTime(0.0001, ctx.currentTime, tc);
+
+        osc.connect(gain);
+        gain.connect(master);
+        osc.start();
+        osc.stop(ctx.currentTime + playDuration);
+        return osc;
+      });
+
+      synthNodesRef.current = nodes;
+      setPlaying("synth");
+      setTimeout(() => setPlaying(null), playDuration * 1000);
+    },
+    [fundamental, effectiveDuration, audioBuffer, stopAudio, getAudioContext]
+  );
+
+  // Update a partial's timeConstant value (in seconds)
+  const updatePartialDecay = useCallback((index, newTimeConstant) => {
+    setPartials((prev) => prev.map((p, i) => (i === index ? { ...p, timeConstant: Math.max(0.01, Math.min(10, newTimeConstant)) } : p)));
+  }, []);
+
+  // Reset a partial's timeConstant to original
+  const resetPartialDecay = useCallback((index) => {
+    setPartials((prev) => prev.map((p, i) => (i === index ? { ...p, timeConstant: p.originalTimeConstant } : p)));
+  }, []);
+
+  // Enable/disable all partials
+  const toggleAllPartials = useCallback(
+    (enabled, autoPlay = false) => {
+      setPartials((prev) => {
+        const updated = prev.map((p) => ({ ...p, enabled }));
+        if (autoPlay && enabled) {
+          setTimeout(() => playSynthWithPartials(updated), 10);
+        }
+        return updated;
+      });
+    },
+    [playSynthWithPartials]
+  );
+
+  // Reset all timeConstants to original
+  const resetAllDecays = useCallback(() => {
+    setPartials((prev) => prev.map((p) => ({ ...p, timeConstant: p.originalTimeConstant })));
+  }, []);
+
   const playOriginal = useCallback(() => {
     if (!audioBuffer) return;
-
     stopAudio();
-
     const ctx = getAudioContext();
-    const source = ctx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(ctx.destination);
-    source.start();
-    source.onended = () => setPlaying(null);
-
-    sourceNodeRef.current = source;
+    const src = ctx.createBufferSource();
+    src.buffer = audioBuffer;
+    src.connect(ctx.destination);
+    src.start();
+    src.onended = () => setPlaying(null);
+    sourceNodeRef.current = src;
     setPlaying("original");
   }, [audioBuffer, stopAudio, getAudioContext]);
 
-  /**
-   * Play synthesized version using additive synthesis
-   */
   const playSynth = useCallback(() => {
-    if (partials.length === 0 || !fundamental || !analysisDuration) return;
-
+    const enabledPartials = partials.filter((p) => p.enabled);
+    if (!enabledPartials.length || !fundamental) return;
     stopAudio();
-
     const ctx = getAudioContext();
-    // Use the ANALYSIS duration - the window over which decay was calculated
-    // This ensures synth decay matches what was measured in the original
-    const duration = analysisDuration;
 
-    const masterGain = ctx.createGain();
-    masterGain.gain.value = 0.5;
-    masterGain.connect(ctx.destination);
+    // Playback duration for A/B comparison (when to stop oscillators)
+    const playDuration = effectiveDuration || audioBuffer?.duration || 4;
 
-    const nodes = [];
+    const master = ctx.createGain();
+    master.gain.value = 0.5;
+    master.connect(ctx.destination);
 
-    partials.forEach((partial) => {
+    const nodes = enabledPartials.map((p) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-
       osc.type = "sine";
-      osc.frequency.value = partial.ratio * fundamental;
+      osc.frequency.value = p.ratio * fundamental;
 
-      // Convert dB to linear amplitude
-      const amplitude = Math.pow(10, partial.gainDb / 20) * 0.3;
+      const amp = Math.pow(10, p.gainDb / 20) * 0.3;
 
-      // Decay value (0-1) represents how much amplitude remains at end of analysis window
-      // decay = 1.0 → slowest decay (most sustain relative to others)
-      // decay = 0.1 → fastest decay
-      //
-      // We want the sound to reach ~1% (-40dB) by decayTime
-      // For setTargetAtTime: amplitude = start * e^(-t/timeConstant)
-      // To reach 1% at t=decayTime: 0.01 = e^(-decayTime/timeConstant)
-      // timeConstant = decayTime / 4.6
-      const decayTime = duration * Math.max(partial.decay, 0.02);
-      const timeConstant = decayTime / 4.6; // Reaches ~1% at decayTime
+      // Use timeConstant directly - it's already in seconds
+      const tc = Math.max(0.01, p.timeConstant || 0.5);
 
-      gain.gain.setValueAtTime(amplitude, ctx.currentTime);
-      gain.gain.setTargetAtTime(0.0001, ctx.currentTime, timeConstant);
+      gain.gain.setValueAtTime(amp, ctx.currentTime);
+      gain.gain.setTargetAtTime(0.0001, ctx.currentTime, tc);
 
       osc.connect(gain);
-      gain.connect(masterGain);
+      gain.connect(master);
       osc.start();
-      osc.stop(ctx.currentTime + duration);
-
-      nodes.push(osc);
+      osc.stop(ctx.currentTime + playDuration);
+      return osc;
     });
 
     synthNodesRef.current = nodes;
     setPlaying("synth");
+    setTimeout(() => setPlaying(null), playDuration * 1000);
+  }, [partials, fundamental, effectiveDuration, audioBuffer, stopAudio, getAudioContext]);
 
-    setTimeout(() => setPlaying(null), duration * 1000);
-  }, [partials, fundamental, analysisDuration, stopAudio, getAudioContext]);
-
-  /**
-   * Generate CSV content
-   */
+  // Generate CSV from enabled partials only
   const getCSV = useCallback(() => {
-    if (partials.length === 0) return "";
-    return generateModalCSV(partials, 0);
-  }, [partials]);
+    const enabledPartials = partials.filter((p) => p.enabled);
+    if (!enabledPartials.length) return "";
+    return generateModalCSV(enabledPartials, analysisDuration);
+  }, [partials, analysisDuration]);
+  const getCSVFileName = useCallback(() => fileName.replace(/\.[^/.]+$/, "") + "_modal.csv", [fileName]);
 
-  /**
-   * Get suggested filename for CSV export
-   */
-  const getCSVFileName = useCallback(() => {
-    return fileName.replace(/\.[^/.]+$/, "") + "_modal.csv";
-  }, [fileName]);
-
-  /**
-   * Reset all state
-   */
-  const reset = useCallback(() => {
-    stopAudio();
-    setAudioBuffer(null);
-    setFileName("");
-    setPartials([]);
-    setFundamental(0);
-    setSpectrum(null);
-    setAnalysisDuration(0);
-    setProgress({ stage: "", percent: 0 });
-    setError(null);
-  }, [stopAudio]);
+  const enabledCount = partials.filter((p) => p.enabled).length;
 
   return {
-    // State
     audioBuffer,
     fileName,
     analyzing,
@@ -253,14 +275,12 @@ export function useAudioAnalyzer() {
     spectrum,
     playing,
     error,
-
-    // Audio info
     duration: audioBuffer?.duration || 0,
     analysisDuration,
+    effectiveDuration,
     sampleRate: audioBuffer?.sampleRate || 0,
     channels: audioBuffer?.numberOfChannels || 0,
-
-    // Actions
+    enabledCount,
     loadFile,
     analyze,
     playOriginal,
@@ -268,8 +288,10 @@ export function useAudioAnalyzer() {
     stopAudio,
     getCSV,
     getCSVFileName,
-    reset
+    togglePartial,
+    updatePartialDecay,
+    resetPartialDecay,
+    toggleAllPartials,
+    resetAllDecays
   };
 }
-
-export default useAudioAnalyzer;

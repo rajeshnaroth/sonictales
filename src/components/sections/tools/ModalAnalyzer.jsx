@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useAudioAnalyzer } from "./useAudioAnalyzer";
 
 /**
@@ -18,6 +18,7 @@ const ModalAnalyzer = () => {
 
   // Audio analyzer hook
   const {
+    audioBuffer,
     fileName,
     analyzing,
     progress,
@@ -27,16 +28,48 @@ const ModalAnalyzer = () => {
     playing,
     error,
     duration,
+    analysisDuration,
+    effectiveDuration,
     sampleRate,
     channels,
+    enabledCount,
     loadFile,
     analyze,
     playOriginal,
     playSynth,
     stopAudio,
     getCSV,
-    getCSVFileName
+    getCSVFileName,
+    togglePartial,
+    updatePartialDecay,
+    resetPartialDecay,
+    toggleAllPartials,
+    resetAllDecays
   } = useAudioAnalyzer();
+
+  // Track previous audioBuffer to detect new file loads vs option changes
+  const prevAudioBufferRef = useRef(null);
+  const analyzeRef = useRef(analyze);
+  analyzeRef.current = analyze;
+
+  // Auto-analyze when file loads (immediate) or options change (debounced)
+  useEffect(() => {
+    if (!audioBuffer) return;
+
+    const isNewFile = audioBuffer !== prevAudioBufferRef.current;
+    prevAudioBufferRef.current = audioBuffer;
+
+    if (isNewFile) {
+      // New file loaded - analyze immediately
+      analyzeRef.current({ fftSize, peakThreshold, maxPartials });
+    } else {
+      // Options changed - debounce
+      const timeoutId = setTimeout(() => {
+        analyzeRef.current({ fftSize, peakThreshold, maxPartials });
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [fftSize, peakThreshold, maxPartials, audioBuffer]);
 
   // File handling
   const handleFile = useCallback(
@@ -68,7 +101,7 @@ const ModalAnalyzer = () => {
     if (file) handleFile(file);
   };
 
-  // Analysis
+  // Analysis (kept for manual trigger if needed)
   const handleAnalyze = useCallback(() => {
     analyze({ fftSize, peakThreshold, maxPartials });
   }, [analyze, fftSize, peakThreshold, maxPartials]);
@@ -139,8 +172,11 @@ const ModalAnalyzer = () => {
             maxPartials={maxPartials}
             analyzing={analyzing}
             duration={duration}
+            analysisDuration={analysisDuration}
+            effectiveDuration={effectiveDuration}
             sampleRate={sampleRate}
             channels={channels}
+            partialsCount={partials.length}
             onFftSizeChange={setFftSize}
             onThresholdChange={setPeakThreshold}
             onMaxPartialsChange={setMaxPartials}
@@ -154,9 +190,26 @@ const ModalAnalyzer = () => {
         {/* Playback & Export */}
         {partials.length > 0 && (
           <>
-            <PlaybackControls playing={playing} onPlayOriginal={playOriginal} onPlaySynth={playSynth} onStop={stopAudio} onDownload={handleDownloadCSV} onShowCSV={handleShowCSV} />
+            <PlaybackControls
+              playing={playing}
+              enabledCount={enabledCount}
+              onPlayOriginal={playOriginal}
+              onPlaySynth={playSynth}
+              onStop={stopAudio}
+              onDownload={handleDownloadCSV}
+              onShowCSV={handleShowCSV}
+            />
 
-            <PartialsTable partials={partials} />
+            <PartialsTable
+              partials={partials}
+              enabledCount={enabledCount}
+              onTogglePartial={togglePartial}
+              onUpdatePartialDecay={updatePartialDecay}
+              onResetPartialDecay={resetPartialDecay}
+              onToggleAllPartials={toggleAllPartials}
+              onResetAllDecays={resetAllDecays}
+              onStopAudio={stopAudio}
+            />
           </>
         )}
 
@@ -210,7 +263,22 @@ const ProgressBar = ({ stage, percent }) => (
   </div>
 );
 
-const AnalysisControls = ({ fftSize, peakThreshold, maxPartials, analyzing, duration, sampleRate, channels, onFftSizeChange, onThresholdChange, onMaxPartialsChange, onAnalyze }) => (
+const AnalysisControls = ({
+  fftSize,
+  peakThreshold,
+  maxPartials,
+  analyzing,
+  duration,
+  analysisDuration,
+  effectiveDuration,
+  sampleRate,
+  channels,
+  partialsCount,
+  onFftSizeChange,
+  onThresholdChange,
+  onMaxPartialsChange,
+  onAnalyze
+}) => (
   <div className="bg-gray-900 rounded-lg p-3 mb-4">
     <div className="grid grid-cols-2 gap-3 mb-3">
       <div>
@@ -232,17 +300,19 @@ const AnalysisControls = ({ fftSize, peakThreshold, maxPartials, analyzing, dura
         <input type="range" min="8" max="64" value={maxPartials} onChange={(e) => onMaxPartialsChange(Number(e.target.value))} className="w-full" disabled={analyzing} />
       </div>
       <div className="flex items-end">
-        <button
-          onClick={onAnalyze}
-          disabled={analyzing}
-          className="w-full bg-green-600 hover:bg-green-500 disabled:bg-gray-600 disabled:cursor-not-allowed px-3 py-1.5 rounded text-sm font-semibold transition-colors"
-        >
-          {analyzing ? "⏳ Analyzing..." : "🔬 Analyze"}
-        </button>
+        {analyzing ? (
+          <div className="w-full bg-gray-700 px-3 py-1.5 rounded text-sm text-center text-yellow-400">⏳ Analyzing...</div>
+        ) : partialsCount > 0 ? (
+          <div className="w-full bg-gray-700 px-3 py-1.5 rounded text-sm text-center text-green-400">✓ {partialsCount} partials</div>
+        ) : (
+          <div className="w-full bg-gray-700 px-3 py-1.5 rounded text-sm text-center text-gray-500">Adjust options above</div>
+        )}
       </div>
     </div>
     <div className="text-xs text-gray-400">
-      {duration.toFixed(2)}s • {sampleRate}Hz • {channels}ch
+      File: {duration.toFixed(2)}s • {sampleRate}Hz • {channels}ch
+      {analysisDuration > 0 && <span className="text-yellow-400"> • Decay window: {analysisDuration.toFixed(2)}s</span>}
+      {effectiveDuration > 0 && <span className="text-green-400"> • Playback: {effectiveDuration.toFixed(2)}s</span>}
     </div>
   </div>
 );
@@ -277,14 +347,14 @@ const SpectrumView = ({ spectrum, fundamental, peakThreshold, sampleRate }) => {
   );
 };
 
-const PlaybackControls = ({ playing, onPlayOriginal, onPlaySynth, onStop, onDownload, onShowCSV }) => (
+const PlaybackControls = ({ playing, enabledCount, onPlayOriginal, onPlaySynth, onStop, onDownload, onShowCSV }) => (
   <div className="bg-gray-900 rounded-lg p-3 mb-4">
     <div className="flex gap-2 flex-wrap">
       <button onClick={onPlayOriginal} className={`px-4 py-2 rounded text-sm font-semibold transition-colors ${playing === "original" ? "bg-blue-500" : "bg-blue-600 hover:bg-blue-500"}`}>
         {playing === "original" ? "🔊 Original..." : "▶️ Original"}
       </button>
       <button onClick={onPlaySynth} className={`px-4 py-2 rounded text-sm font-semibold transition-colors ${playing === "synth" ? "bg-purple-500" : "bg-purple-600 hover:bg-purple-500"}`}>
-        {playing === "synth" ? "🔊 Synth..." : "▶️ Synthesized"}
+        {playing === "synth" ? "🔊 Synth..." : `▶️ Synthesized (${enabledCount})`}
       </button>
       <button onClick={onStop} className="px-4 py-2 rounded text-sm font-semibold bg-red-600 hover:bg-red-500 transition-colors">
         ⏹️ Stop
@@ -300,33 +370,92 @@ const PlaybackControls = ({ playing, onPlayOriginal, onPlaySynth, onStop, onDown
   </div>
 );
 
-const PartialsTable = ({ partials }) => (
+const PartialsTable = ({ partials, enabledCount, onTogglePartial, onUpdatePartialDecay, onResetPartialDecay, onToggleAllPartials, onResetAllDecays, onStopAudio }) => (
   <div className="bg-gray-900 rounded-lg p-3">
-    <h2 className="text-sm font-semibold mb-2 text-green-400">Extracted Partials ({partials.length})</h2>
-    <div className="overflow-x-auto max-h-72 overflow-y-auto">
+    <div className="flex items-center justify-between mb-2">
+      <h2 className="text-sm font-semibold text-green-400">
+        Extracted Partials ({enabledCount}/{partials.length} enabled)
+      </h2>
+      <div className="flex gap-2">
+        <button onClick={() => onToggleAllPartials(true, true)} className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded">
+          All On
+        </button>
+        <button
+          onClick={() => {
+            onToggleAllPartials(false);
+            onStopAudio();
+          }}
+          className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
+        >
+          All Off
+        </button>
+        <button onClick={onResetAllDecays} className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded">
+          Reset Decays
+        </button>
+      </div>
+    </div>
+    <div className="overflow-x-auto max-h-80 overflow-y-auto">
       <table className="w-full text-xs">
-        <thead className="sticky top-0 bg-gray-900">
+        <thead className="sticky top-0 bg-gray-900 z-10">
           <tr className="text-left text-gray-400 border-b border-gray-700">
+            <th className="pb-2 pr-2 w-8">On</th>
             <th className="pb-2 pr-3">#</th>
             <th className="pb-2 pr-3">Freq (Hz)</th>
             <th className="pb-2 pr-3">Ratio</th>
             <th className="pb-2 pr-3">Gain (dB)</th>
-            <th className="pb-2 pr-3">Decay</th>
-            <th className="pb-2">Amplitude</th>
+            <th className="pb-2 pr-3 w-36" title="Time constant in seconds (lower = faster decay)">
+              Decay τ
+            </th>
+            <th className="pb-2 pr-2 w-8" title="Fit quality: green=good, yellow=fair, red=poor">
+              Fit
+            </th>
+            <th className="pb-2">Visual</th>
           </tr>
         </thead>
         <tbody>
           {partials.map((p, i) => (
-            <tr key={i} className="border-b border-gray-700/30 hover:bg-gray-700/30">
+            <tr key={i} className={`border-b border-gray-700/30 hover:bg-gray-700/30 ${!p.enabled ? "opacity-40" : ""}`}>
+              <td className="py-1.5 pr-2">
+                <input
+                  type="checkbox"
+                  checked={p.enabled}
+                  onChange={() => onTogglePartial(i, true)}
+                  className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800 cursor-pointer"
+                />
+              </td>
               <td className="py-1.5 pr-3 text-gray-500">{i + 1}</td>
               <td className="py-1.5 pr-3">{p.freq.toFixed(1)}</td>
               <td className="py-1.5 pr-3 font-mono text-green-300">{p.ratio.toFixed(4)}</td>
               <td className="py-1.5 pr-3">{p.gainDb.toFixed(1)}</td>
-              <td className="py-1.5 pr-3">{p.decay.toFixed(3)}</td>
+              <td className="py-1.5 pr-3">
+                <div className="flex items-center gap-1">
+                  <input
+                    type="range"
+                    min="0.01"
+                    max="5"
+                    step="0.01"
+                    value={p.timeConstant}
+                    onChange={(e) => onUpdatePartialDecay(i, parseFloat(e.target.value))}
+                    className="w-16 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                  />
+                  <span className="w-14 text-right font-mono">{p.timeConstant.toFixed(2)}s</span>
+                  {Math.abs(p.timeConstant - p.originalTimeConstant) > 0.001 && (
+                    <button onClick={() => onResetPartialDecay(i)} className="text-yellow-500 hover:text-yellow-400 ml-1" title="Reset to original">
+                      ↺
+                    </button>
+                  )}
+                </div>
+              </td>
+              <td className="py-1.5 pr-2 text-center">
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${p.fitQuality >= 0.7 ? "bg-green-500" : p.fitQuality >= 0.4 ? "bg-yellow-500" : "bg-red-500"}`}
+                  title={`Fit: ${(p.fitQuality * 100).toFixed(0)}%`}
+                />
+              </td>
               <td className="py-1.5">
                 <div className="flex items-center gap-1">
-                  <div className="h-2 bg-green-500 rounded" style={{ width: `${Math.max(4, ((p.gainDb + 60) / 60) * 60)}px` }} />
-                  <div className="h-2 bg-blue-500 rounded opacity-60" style={{ width: `${p.decay * 30}px` }} />
+                  <div className="h-2 bg-green-500 rounded" style={{ width: `${Math.max(4, ((p.gainDb + 60) / 60) * 50)}px` }} />
+                  <div className="h-2 bg-blue-500 rounded opacity-60" style={{ width: `${Math.min(50, p.timeConstant * 20)}px` }} />
                 </div>
               </td>
             </tr>
@@ -339,7 +468,7 @@ const PartialsTable = ({ partials }) => (
         <span className="w-3 h-2 bg-green-500 rounded" /> Gain
       </span>
       <span className="flex items-center gap-1">
-        <span className="w-3 h-2 bg-blue-500 rounded opacity-60" /> Decay
+        <span className="w-3 h-2 bg-blue-500 rounded opacity-60" /> Decay τ (seconds)
       </span>
     </div>
   </div>
