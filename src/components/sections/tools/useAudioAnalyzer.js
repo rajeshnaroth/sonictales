@@ -143,9 +143,16 @@ export function useAudioAnalyzer() {
 
       const playDuration = effectiveDuration || audioBuffer?.duration || 4;
 
+      // Scale master gain based on number of partials to maintain consistent volume
+      // When soloing few partials, boost the gain; when playing many, reduce to avoid clipping
+      const gainScale = Math.min(1, 8 / Math.max(1, partialsToPlay.length));
+
       const master = ctx.createGain();
-      master.gain.value = 0.5;
+      master.gain.value = 0.6 * gainScale;
       master.connect(ctx.destination);
+
+      // Find the loudest partial to normalize relative gains
+      const maxGainDb = Math.max(...partialsToPlay.map((p) => p.gainDb));
 
       const nodes = partialsToPlay.map((p) => {
         const osc = ctx.createOscillator();
@@ -153,7 +160,10 @@ export function useAudioAnalyzer() {
         osc.type = "sine";
         osc.frequency.value = p.ratio * fundamental;
 
-        const amp = Math.pow(10, p.gainDb / 20) * 0.3;
+        // Normalize gain relative to loudest partial, with a minimum floor
+        const normalizedDb = p.gainDb - maxGainDb; // Will be 0 for loudest, negative for others
+        const amp = Math.pow(10, normalizedDb / 20) * 0.8;
+
         // Use timeConstant directly - it's already in seconds
         const tc = Math.max(0.01, p.timeConstant || 0.5);
 
@@ -225,9 +235,15 @@ export function useAudioAnalyzer() {
     // Playback duration for A/B comparison (when to stop oscillators)
     const playDuration = effectiveDuration || audioBuffer?.duration || 4;
 
+    // Scale master gain based on number of partials to maintain consistent volume
+    const gainScale = Math.min(1, 8 / Math.max(1, enabledPartials.length));
+
     const master = ctx.createGain();
-    master.gain.value = 0.5;
+    master.gain.value = 0.6 * gainScale;
     master.connect(ctx.destination);
+
+    // Find the loudest partial to normalize relative gains
+    const maxGainDb = Math.max(...enabledPartials.map((p) => p.gainDb));
 
     const nodes = enabledPartials.map((p) => {
       const osc = ctx.createOscillator();
@@ -235,7 +251,9 @@ export function useAudioAnalyzer() {
       osc.type = "sine";
       osc.frequency.value = p.ratio * fundamental;
 
-      const amp = Math.pow(10, p.gainDb / 20) * 0.3;
+      // Normalize gain relative to loudest partial
+      const normalizedDb = p.gainDb - maxGainDb;
+      const amp = Math.pow(10, normalizedDb / 20) * 0.8;
 
       // Use timeConstant directly - it's already in seconds
       const tc = Math.max(0.01, p.timeConstant || 0.5);
@@ -285,6 +303,7 @@ export function useAudioAnalyzer() {
     analyze,
     playOriginal,
     playSynth,
+    playSynthWithPartials,
     stopAudio,
     getCSV,
     getCSVFileName,

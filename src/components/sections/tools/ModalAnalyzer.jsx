@@ -7,7 +7,7 @@ import { useAudioAnalyzer } from "./useAudioAnalyzer";
  */
 const ModalAnalyzer = () => {
   // Analysis options state
-  const [fftSize, setFftSize] = useState(4096);
+  const [fftSize, setFftSize] = useState(16384);
   const [peakThreshold, setPeakThreshold] = useState(-50);
   const [maxPartials, setMaxPartials] = useState(48);
 
@@ -15,6 +15,8 @@ const ModalAnalyzer = () => {
   const [dragOver, setDragOver] = useState(false);
   const [showCSV, setShowCSV] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [soloPartials, setSoloPartials] = useState(new Set());
+  const [sectionsCollapsed, setSectionsCollapsed] = useState(false);
 
   // Audio analyzer hook
   const {
@@ -37,6 +39,7 @@ const ModalAnalyzer = () => {
     analyze,
     playOriginal,
     playSynth,
+    playSynthWithPartials,
     stopAudio,
     getCSV,
     getCSVFileName,
@@ -46,6 +49,52 @@ const ModalAnalyzer = () => {
     toggleAllPartials,
     resetAllDecays
   } = useAudioAnalyzer();
+
+  // Solo handlers (must be after useAudioAnalyzer since they reference partials and playSynthWithPartials)
+  const handleToggleSolo = useCallback(
+    (index) => {
+      setSoloPartials((prev) => {
+        const next = new Set(prev);
+        if (next.has(index)) {
+          next.delete(index);
+        } else {
+          next.add(index);
+        }
+
+        // Auto-play with the new solo selection
+        setTimeout(() => {
+          if (next.size > 0) {
+            // Play only soloed partials
+            const soloedPartials = partials.filter((_, i) => next.has(i));
+            if (soloedPartials.length > 0) {
+              playSynthWithPartials(soloedPartials);
+            }
+          } else {
+            // No solo - play all enabled partials
+            const enabledPartials = partials.filter((p) => p.enabled);
+            if (enabledPartials.length > 0) {
+              playSynthWithPartials(enabledPartials);
+            }
+          }
+        }, 10);
+
+        return next;
+      });
+    },
+    [partials, playSynthWithPartials]
+  );
+
+  const handleClearAllSolo = useCallback(() => {
+    setSoloPartials(new Set());
+    // Play all enabled partials when clearing solo
+    const enabledPartials = partials.filter((p) => p.enabled);
+    if (enabledPartials.length > 0) {
+      playSynthWithPartials(enabledPartials);
+    }
+  }, [partials, playSynthWithPartials]);
+
+  // Check if solo mode is active
+  const isSoloActive = soloPartials.size > 0;
 
   // Track previous audioBuffer to detect new file loads vs option changes
   const prevAudioBufferRef = useRef(null);
@@ -153,19 +202,24 @@ const ModalAnalyzer = () => {
     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
       <div className="max-w-full">
         {/* Header */}
-        <Header />
-
+        <Header isLoaded={isLoaded} sectionsCollapsed={sectionsCollapsed} onToggleCollapsed={() => setSectionsCollapsed(!sectionsCollapsed)} />
         {/* Error Display */}
         {error && <ErrorBanner message={error} />}
-
         {/* Drop Zone */}
-        <DropZone fileName={fileName} dragOver={dragOver} onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onFileInput={handleFileInput} />
-
-        {/* Progress Bar */}
-        {(progress.stage || analyzing) && <ProgressBar stage={progress.stage} percent={progress.percent} />}
-
+        {!sectionsCollapsed && (
+          <DropZone
+            fileName={fileName}
+            dragOver={dragOver}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onFileInput={handleFileInput}
+            progress={progress}
+            analyzing={analyzing}
+          />
+        )}
         {/* Analysis Controls */}
-        {isLoaded && (
+        {isLoaded && !sectionsCollapsed && (
           <AnalysisControls
             fftSize={fftSize}
             peakThreshold={peakThreshold}
@@ -176,17 +230,13 @@ const ModalAnalyzer = () => {
             effectiveDuration={effectiveDuration}
             sampleRate={sampleRate}
             channels={channels}
-            partialsCount={partials.length}
             onFftSizeChange={setFftSize}
             onThresholdChange={setPeakThreshold}
             onMaxPartialsChange={setMaxPartials}
-            onAnalyze={handleAnalyze}
           />
         )}
-
         {/* Spectrum Visualization */}
-        {spectrum && <SpectrumView spectrum={spectrum} fundamental={fundamental} peakThreshold={peakThreshold} sampleRate={sampleRate} />}
-
+        {spectrum && !sectionsCollapsed && <SpectrumView spectrum={spectrum} fundamental={fundamental} peakThreshold={peakThreshold} sampleRate={sampleRate} />}
         {/* Playback & Export */}
         {partials.length > 0 && (
           <>
@@ -209,13 +259,15 @@ const ModalAnalyzer = () => {
               onToggleAllPartials={toggleAllPartials}
               onResetAllDecays={resetAllDecays}
               onStopAudio={stopAudio}
+              soloPartials={soloPartials}
+              isSoloActive={isSoloActive}
+              onToggleSolo={handleToggleSolo}
+              onClearAllSolo={handleClearAllSolo}
             />
           </>
         )}
-
         {/* CSV Modal */}
         {showCSV && <CSVModal csvContent={getCSV()} fileName={getCSVFileName()} copySuccess={copySuccess} onCopy={handleCopyCSV} onClose={() => setShowCSV(false)} />}
-
         {/* Footer */}
         <Footer />
       </div>
@@ -227,29 +279,67 @@ const ModalAnalyzer = () => {
 // Sub-components
 // =============================================================================
 
-const Header = () => (
-  <>
-    <h1 className="text-2xl font-bold mb-1 text-green-400">Modal Resonance Analyzer</h1>
-    <p className="text-gray-400 text-sm mb-4">Extract partials from audio for Zebra 3 Modal synthesis</p>
-  </>
+const Header = ({ isLoaded, sectionsCollapsed, onToggleCollapsed }) => (
+  <div className="flex items-start justify-between mb-4">
+    <div>
+      <h1 className="text-2xl font-bold mb-1 text-green-400">Modal Resonance Analyzer</h1>
+      <p className="text-gray-400 text-sm">Extract partials from audio for Modal synthesis</p>
+    </div>
+    {isLoaded && (
+      <button
+        onClick={onToggleCollapsed}
+        className="flex items-center gap-1 px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+        title={sectionsCollapsed ? "Show file, controls & spectrum" : "Hide file, controls & spectrum"}
+      >
+        {sectionsCollapsed ? (
+          <>
+            <span>▼</span>
+            <span>Show</span>
+          </>
+        ) : (
+          <>
+            <span>▲</span>
+            <span>Hide</span>
+          </>
+        )}
+      </button>
+    )}
+  </div>
 );
 
 const ErrorBanner = ({ message }) => <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 mb-4 text-red-200">⚠️ {message}</div>;
 
-const DropZone = ({ fileName, dragOver, onDrop, onDragOver, onDragLeave, onFileInput }) => (
-  <div
-    onDrop={onDrop}
-    onDragOver={onDragOver}
-    onDragLeave={onDragLeave}
-    onClick={() => document.getElementById("fileInput").click()}
-    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer mb-4 transition-all ${dragOver ? "border-green-400 bg-green-400/10" : "border-gray-600 hover:border-gray-500"}`}
-  >
-    <input id="fileInput" type="file" accept="audio/*" className="hidden" onChange={onFileInput} />
-    <div className="text-3xl mb-1">🎵</div>
-    <p>{fileName || "Drop audio file here or click to browse"}</p>
-    <p className="text-xs text-gray-500 mt-1">WAV, MP3, OGG supported • All processing is local</p>
-  </div>
-);
+const DropZone = ({ fileName, dragOver, onDrop, onDragOver, onDragLeave, onFileInput, progress, analyzing }) => {
+  const hasFile = !!fileName;
+  const showProgress = hasFile && (progress.stage || analyzing);
+
+  return (
+    <div
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onClick={() => document.getElementById("fileInput").click()}
+      className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer mb-4 transition-all ${dragOver ? "border-green-400 bg-green-400/10" : "border-gray-600 hover:border-gray-500"}`}
+    >
+      <input id="fileInput" type="file" accept="audio/*" className="hidden" onChange={onFileInput} />
+      {!hasFile && <div className="text-3xl mb-1">🎵</div>}
+      <p>{fileName || "Drop audio file here or click to browse"}</p>
+      {showProgress ? (
+        <div className="mt-2">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-green-400">{progress.stage || "Processing..."}</span>
+            <span className="text-gray-400">{progress.percent}%</span>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500 transition-all duration-300 ease-out" style={{ width: `${progress.percent}%` }} />
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-500 mt-1">{hasFile ? "Click to change file" : "WAV, MP3, OGG supported • All processing is local"}</p>
+      )}
+    </div>
+  );
+};
 
 const ProgressBar = ({ stage, percent }) => (
   <div className="bg-gray-900 rounded-lg p-3 mb-4">
@@ -273,17 +363,15 @@ const AnalysisControls = ({
   effectiveDuration,
   sampleRate,
   channels,
-  partialsCount,
   onFftSizeChange,
   onThresholdChange,
-  onMaxPartialsChange,
-  onAnalyze
+  onMaxPartialsChange
 }) => (
   <div className="bg-gray-900 rounded-lg p-3 mb-4">
-    <div className="grid grid-cols-2 gap-3 mb-3">
-      <div>
+    <div className="flex flex-wrap gap-8 items-end mb-2">
+      <div className="flex-shrink-0">
         <label className="block text-xs text-gray-400 mb-1">FFT Size</label>
-        <select value={fftSize} onChange={(e) => onFftSizeChange(Number(e.target.value))} className="w-full bg-gray-700 rounded px-2 py-1 text-sm" disabled={analyzing}>
+        <select value={fftSize} onChange={(e) => onFftSizeChange(Number(e.target.value))} className="bg-gray-700 rounded px-2 py-1 text-sm" disabled={analyzing}>
           <option value={1024}>1024 (fastest)</option>
           <option value={2048}>2048 (fast)</option>
           <option value={4096}>4096 (balanced)</option>
@@ -291,22 +379,13 @@ const AnalysisControls = ({
           <option value={16384}>16384 (very precise)</option>
         </select>
       </div>
-      <div>
+      <div className="flex-1 min-w-32">
         <label className="block text-xs text-gray-400 mb-1">Threshold: {peakThreshold}dB</label>
         <input type="range" min="-80" max="-20" value={peakThreshold} onChange={(e) => onThresholdChange(Number(e.target.value))} className="w-full" disabled={analyzing} />
       </div>
-      <div>
+      <div className="flex-1 min-w-32">
         <label className="block text-xs text-gray-400 mb-1">Max Partials: {maxPartials}</label>
         <input type="range" min="8" max="64" value={maxPartials} onChange={(e) => onMaxPartialsChange(Number(e.target.value))} className="w-full" disabled={analyzing} />
-      </div>
-      <div className="flex items-end">
-        {analyzing ? (
-          <div className="w-full bg-gray-700 px-3 py-1.5 rounded text-sm text-center text-yellow-400">⏳ Analyzing...</div>
-        ) : partialsCount > 0 ? (
-          <div className="w-full bg-gray-700 px-3 py-1.5 rounded text-sm text-center text-green-400">✓ {partialsCount} partials</div>
-        ) : (
-          <div className="w-full bg-gray-700 px-3 py-1.5 rounded text-sm text-center text-gray-500">Adjust options above</div>
-        )}
       </div>
     </div>
     <div className="text-xs text-gray-400">
@@ -370,109 +449,167 @@ const PlaybackControls = ({ playing, enabledCount, onPlayOriginal, onPlaySynth, 
   </div>
 );
 
-const PartialsTable = ({ partials, enabledCount, onTogglePartial, onUpdatePartialDecay, onResetPartialDecay, onToggleAllPartials, onResetAllDecays, onStopAudio }) => (
-  <div className="bg-gray-900 rounded-lg p-3">
-    <div className="flex items-center justify-between mb-2">
-      <h2 className="text-sm font-semibold text-green-400">
-        Extracted Partials ({enabledCount}/{partials.length} enabled)
-      </h2>
-      <div className="flex gap-2">
-        <button onClick={() => onToggleAllPartials(true, true)} className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded">
-          All On
-        </button>
-        <button
-          onClick={() => {
-            onToggleAllPartials(false);
-            onStopAudio();
-          }}
-          className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded"
-        >
-          All Off
-        </button>
-        <button onClick={onResetAllDecays} className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded">
-          Reset Decays
-        </button>
+const PartialsTable = ({
+  partials,
+  enabledCount,
+  onTogglePartial,
+  onUpdatePartialDecay,
+  onResetPartialDecay,
+  onToggleAllPartials,
+  onResetAllDecays,
+  onStopAudio,
+  soloPartials,
+  isSoloActive,
+  onToggleSolo,
+  onClearAllSolo
+}) => {
+  const allEnabled = partials.length > 0 && partials.every((p) => p.enabled);
+  const someEnabled = partials.some((p) => p.enabled);
+
+  const handleHeaderCheckboxChange = () => {
+    if (allEnabled) {
+      onToggleAllPartials(false);
+      onStopAudio();
+    } else {
+      onToggleAllPartials(true, true);
+    }
+  };
+
+  return (
+    <div className="bg-gray-900 rounded-lg p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold text-green-400">
+          Extracted Partials ({enabledCount}/{partials.length} enabled)
+          {isSoloActive && <span className="text-yellow-400 ml-2">• Solo: {soloPartials.size}</span>}
+        </h2>
+        <div className="flex gap-2">
+          {isSoloActive && (
+            <button onClick={onClearAllSolo} className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded">
+              Clear Solo
+            </button>
+          )}
+          <button onClick={onResetAllDecays} className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded">
+            Reset Decays
+          </button>
+        </div>
       </div>
-    </div>
-    <div className="overflow-x-auto max-h-80 overflow-y-auto">
-      <table className="w-full text-xs">
-        <thead className="sticky top-0 bg-gray-900 z-10">
-          <tr className="text-left text-gray-400 border-b border-gray-700">
-            <th className="pb-2 pr-2 w-8">On</th>
-            <th className="pb-2 pr-3">#</th>
-            <th className="pb-2 pr-3">Freq (Hz)</th>
-            <th className="pb-2 pr-3">Ratio</th>
-            <th className="pb-2 pr-3">Gain (dB)</th>
-            <th className="pb-2 pr-3 w-36" title="Time constant in seconds (lower = faster decay)">
-              Decay τ
-            </th>
-            <th className="pb-2 pr-2 w-8" title="Fit quality: green=good, yellow=fair, red=poor">
-              Fit
-            </th>
-            <th className="pb-2">Visual</th>
-          </tr>
-        </thead>
-        <tbody>
-          {partials.map((p, i) => (
-            <tr key={i} className={`border-b border-gray-700/30 hover:bg-gray-700/30 ${!p.enabled ? "opacity-40" : ""}`}>
-              <td className="py-1.5 pr-2">
+      <div className="overflow-x-auto max-h-80 overflow-y-auto">
+        <table className="w-full text-xs">
+          <thead className="sticky top-0 bg-gray-900 z-10">
+            <tr className="text-left text-gray-400 border-b border-gray-700">
+              <th className="pb-2 pr-2 w-8" title="Enable/disable partials for synthesis">
                 <input
                   type="checkbox"
-                  checked={p.enabled}
-                  onChange={() => onTogglePartial(i, true)}
-                  className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800 cursor-pointer"
+                  checked={allEnabled}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someEnabled && !allEnabled;
+                  }}
+                  onChange={handleHeaderCheckboxChange}
+                  disabled={isSoloActive}
+                  className={`w-4 h-4 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800 ${
+                    isSoloActive ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                  }`}
+                  title={isSoloActive ? "Disabled while solo is active" : "Toggle all partials"}
                 />
-              </td>
-              <td className="py-1.5 pr-3 text-gray-500">{i + 1}</td>
-              <td className="py-1.5 pr-3">{p.freq.toFixed(1)}</td>
-              <td className="py-1.5 pr-3 font-mono text-green-300">{p.ratio.toFixed(4)}</td>
-              <td className="py-1.5 pr-3">{p.gainDb.toFixed(1)}</td>
-              <td className="py-1.5 pr-3">
-                <div className="flex items-center gap-1">
-                  <input
-                    type="range"
-                    min="0.01"
-                    max="5"
-                    step="0.01"
-                    value={p.timeConstant}
-                    onChange={(e) => onUpdatePartialDecay(i, parseFloat(e.target.value))}
-                    className="w-16 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                  />
-                  <span className="w-14 text-right font-mono">{p.timeConstant.toFixed(2)}s</span>
-                  {Math.abs(p.timeConstant - p.originalTimeConstant) > 0.001 && (
-                    <button onClick={() => onResetPartialDecay(i)} className="text-yellow-500 hover:text-yellow-400 ml-1" title="Reset to original">
-                      ↺
-                    </button>
-                  )}
-                </div>
-              </td>
-              <td className="py-1.5 pr-2 text-center">
-                <span
-                  className={`inline-block w-2 h-2 rounded-full ${p.fitQuality >= 0.7 ? "bg-green-500" : p.fitQuality >= 0.4 ? "bg-yellow-500" : "bg-red-500"}`}
-                  title={`Fit: ${(p.fitQuality * 100).toFixed(0)}%`}
-                />
-              </td>
-              <td className="py-1.5">
-                <div className="flex items-center gap-1">
-                  <div className="h-2 bg-green-500 rounded" style={{ width: `${Math.max(4, ((p.gainDb + 60) / 60) * 50)}px` }} />
-                  <div className="h-2 bg-blue-500 rounded opacity-60" style={{ width: `${Math.min(50, p.timeConstant * 20)}px` }} />
-                </div>
-              </td>
+              </th>
+              <th className="pb-2 pr-2 w-8 text-yellow-400" title="Solo partials - only soloed partials will be synthesized">
+                Solo
+              </th>
+              <th className="pb-2 pr-3">#</th>
+              <th className="pb-2 pr-3">Freq (Hz)</th>
+              <th className="pb-2 pr-3">Ratio</th>
+              <th className="pb-2 pr-3">Gain (dB)</th>
+              <th className="pb-2 pr-3 w-36" title="Time constant in seconds (lower = faster decay)">
+                Decay τ
+              </th>
+              <th className="pb-2 pr-2 w-8" title="Fit quality: green=good, yellow=fair, red=poor">
+                Fit
+              </th>
+              <th className="pb-2">Visual</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {partials.map((p, i) => {
+              const isSoloed = soloPartials.has(i);
+              const isEffectivelyEnabled = isSoloActive ? isSoloed : p.enabled;
+              return (
+                <tr key={i} className={`border-b border-gray-700/30 hover:bg-gray-700/30 ${!isEffectivelyEnabled ? "opacity-40" : ""}`}>
+                  <td className="py-1.5 pr-2">
+                    <input
+                      type="checkbox"
+                      checked={p.enabled}
+                      onChange={() => onTogglePartial(i, true)}
+                      disabled={isSoloActive}
+                      className={`w-4 h-4 rounded bg-gray-700 border-gray-600 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800 ${
+                        isSoloActive ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                      }`}
+                    />
+                  </td>
+                  <td className="py-1.5 pr-2">
+                    <input
+                      type="checkbox"
+                      checked={isSoloed}
+                      onChange={() => onToggleSolo(i)}
+                      className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-gray-800 cursor-pointer accent-yellow-500"
+                    />
+                  </td>
+                  <td className="py-1.5 pr-3 text-gray-500">{i + 1}</td>
+                  <td className="py-1.5 pr-3">{p.freq.toFixed(1)}</td>
+                  <td className="py-1.5 pr-3 font-mono text-green-300">{p.ratio.toFixed(4)}</td>
+                  <td className="py-1.5 pr-3">{p.gainDb.toFixed(1)}</td>
+                  <td className="py-1.5 pr-3">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="range"
+                        min="0.01"
+                        max="5"
+                        step="0.01"
+                        value={p.timeConstant}
+                        onChange={(e) => onUpdatePartialDecay(i, parseFloat(e.target.value))}
+                        className="w-16 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <span className="w-14 text-right font-mono">{p.timeConstant.toFixed(2)}s</span>
+                      {Math.abs(p.timeConstant - p.originalTimeConstant) > 0.001 && (
+                        <button onClick={() => onResetPartialDecay(i)} className="text-yellow-500 hover:text-yellow-400 ml-1" title="Reset to original">
+                          ↺
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-1.5 pr-2 text-center">
+                    <span
+                      className={`inline-block w-2 h-2 rounded-full ${p.fitQuality >= 0.7 ? "bg-green-500" : p.fitQuality >= 0.4 ? "bg-yellow-500" : "bg-red-500"}`}
+                      title={`Fit: ${(p.fitQuality * 100).toFixed(0)}%`}
+                    />
+                  </td>
+                  <td className="py-1.5">
+                    <div className="flex items-center gap-1">
+                      <div className="h-2 bg-green-500 rounded" style={{ width: `${Math.max(4, ((p.gainDb + 60) / 60) * 50)}px` }} />
+                      <div className="h-2 bg-blue-500 rounded opacity-60" style={{ width: `${Math.min(50, p.timeConstant * 20)}px` }} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex gap-4 mt-2 text-xs text-gray-500">
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-2 bg-green-500 rounded" /> Gain
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-3 h-2 bg-blue-500 rounded opacity-60" /> Decay τ (seconds)
+        </span>
+        {isSoloActive && (
+          <span className="flex items-center gap-1 text-yellow-400">
+            <span className="w-3 h-2 bg-yellow-500 rounded" /> Solo active - only soloed partials will play
+          </span>
+        )}
+      </div>
     </div>
-    <div className="flex gap-4 mt-2 text-xs text-gray-500">
-      <span className="flex items-center gap-1">
-        <span className="w-3 h-2 bg-green-500 rounded" /> Gain
-      </span>
-      <span className="flex items-center gap-1">
-        <span className="w-3 h-2 bg-blue-500 rounded opacity-60" /> Decay τ (seconds)
-      </span>
-    </div>
-  </div>
-);
+  );
+};
 
 const CSVModal = ({ csvContent, fileName, copySuccess, onCopy, onClose }) => (
   <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
