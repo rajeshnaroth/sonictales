@@ -53,7 +53,7 @@ const PanKnob = ({ tap, index, onPanChange, isHighlighted, playPing }) => {
           isHighlighted ? `ring-2 ${color.ring}` : ""
         } transition-colors`}
       >
-        <div className="absolute top-1 left-1/2 w-1 h-3 -ml-0.5 rounded-full bg-gray-300" style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center 18px" }} />
+        <div className="absolute top-1 left-1/2 w-1 h-3 -ml-0.5 rounded-full bg-gray-300" style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "center 12px" }} />
         <div className={`absolute top-1/2 left-1/2 w-2 h-2 -mt-1 -ml-1 rounded-full ${color.bg}`} />
       </div>
       <div className="flex justify-between w-10 text-xs text-gray-600">
