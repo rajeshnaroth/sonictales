@@ -133,8 +133,9 @@ export const calculateZebraDelays = (delayTaps, subdivision, routingMode) => {
 
 /**
  * Generate complete Zebra .h2p preset file content
+ * @param {Array} jitterValues - Optional array of 8 random values (-6 to +6) for rate offset
  */
-export const generateZebraPreset = (taps, subdivision, routingMode, feedback = 0) => {
+export const generateZebraPreset = (taps, subdivision, routingMode, feedback = 0, jitterValues = null) => {
   const delayTaps = taps.filter((_, i) => i > 0);
   const zebraDelays = calculateZebraDelays(delayTaps, subdivision, routingMode);
 
@@ -146,10 +147,13 @@ export const generateZebraPreset = (taps, subdivision, routingMode, feedback = 0
       const zebraDelay = zebraDelays[i];
 
       if (tap && zebraDelay) {
+        // Apply jitter offset if provided, clamp to -50/+50
+        const jitterOffset = jitterValues ? jitterValues[i] : 0;
+        const jitteredRate = Math.max(-50, Math.min(50, zebraDelay.zebraInfo.rate + jitterOffset));
         return {
           on: 1,
           tpSync: zebraDelay.zebraInfo.syncIndex,
-          ratio: zebraDelay.zebraInfo.rate,
+          ratio: jitteredRate,
           pan: Math.round(tap.pan * 100),
           gain: Math.round(tap.gain * 100)
         };

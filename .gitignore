@@ -19,7 +19,6 @@ jspm_packages/
 
 # Build outputs
 dist/
-build/
 # build/ - commented out to allow pushing build folder
 
 # TypeScript cache

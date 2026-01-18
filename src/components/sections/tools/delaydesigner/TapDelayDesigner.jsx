@@ -31,6 +31,9 @@ const TapDelayDesigner = () => {
     setRoutingMode,
     feedback,
     setFeedback,
+    jitterEnabled,
+    setJitterEnabled,
+    generateJitterValues,
     setTempo,
     setBeatsPerBar,
     setBarCount,
@@ -60,8 +63,6 @@ const TapDelayDesigner = () => {
   const handleExport = useCallback(() => {
     setShowExport(true);
   }, []);
-
-  const presetContent = useMemo(() => exportToZebraPreset(), [exportToZebraPreset]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4">
@@ -109,7 +110,15 @@ const TapDelayDesigner = () => {
           <PanPanel taps={taps} onPanChange={updateTapPan} currentCell={currentCell} playPing={playPing} />
         </div>
 
-        <DelayTimePanel taps={taps} currentCell={currentCell} getTapDelayInfo={getTapDelayInfo} routingMode={routingMode} setRoutingMode={setRoutingMode} />
+        <DelayTimePanel
+          taps={taps}
+          currentCell={currentCell}
+          getTapDelayInfo={getTapDelayInfo}
+          routingMode={routingMode}
+          setRoutingMode={setRoutingMode}
+          jitterEnabled={jitterEnabled}
+          setJitterEnabled={setJitterEnabled}
+        />
 
         <footer className="text-center text-gray-500 text-xs pt-4 border-t border-gray-800">
           <p>100% client-side processing • Part of the Zebra Tools Collection</p>
@@ -117,14 +126,16 @@ const TapDelayDesigner = () => {
 
         {showExport && (
           <ExportModal
-            presetContent={presetContent}
             taps={taps}
             tempo={tempo}
             feedback={feedback}
+            jitterEnabled={jitterEnabled}
+            generateJitterValues={generateJitterValues}
             getTapDelayInfo={getTapDelayInfo}
             routingMode={routingMode}
             presetName={presetName}
             setPresetName={setPresetName}
+            exportToZebraPreset={exportToZebraPreset}
             onDownload={downloadZebraPreset}
             onClose={() => setShowExport(false)}
           />

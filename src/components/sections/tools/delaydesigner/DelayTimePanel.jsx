@@ -43,7 +43,7 @@ const DelayTimeBar = ({ tap, index, isHighlighted, getTapDelayInfo, maxMs, routi
   );
 };
 
-export const DelayTimePanel = ({ taps, currentCell, getTapDelayInfo, routingMode, setRoutingMode }) => {
+export const DelayTimePanel = ({ taps, currentCell, getTapDelayInfo, routingMode, setRoutingMode, jitterEnabled, setJitterEnabled }) => {
   if (taps.length === 0) return null;
 
   const maxMs = useMemo(() => {
@@ -55,6 +55,18 @@ export const DelayTimePanel = ({ taps, currentCell, getTapDelayInfo, routingMode
       <div className="flex items-center mb-3 gap-3">
         <span className="text-gray-400 text-sm font-medium">Delay Time</span>
         <RoutingModeSelector routingMode={routingMode} setRoutingMode={setRoutingMode} />
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={jitterEnabled}
+            onChange={(e) => setJitterEnabled(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-gray-800 cursor-pointer"
+          />
+          <span className="text-gray-400 text-sm">Jitter</span>
+          <span className="text-gray-600 text-xs" title="Adds random ±6 offset to rate values for organic feel">
+            (?)
+          </span>
+        </label>
         <span className="ml-auto text-gray-500 text-xs">{ROUTING_MODES[routingMode].description}</span>
       </div>
       <div className="flex gap-4 justify-center flex-wrap">

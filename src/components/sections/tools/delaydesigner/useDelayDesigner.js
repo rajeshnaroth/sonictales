@@ -22,7 +22,15 @@ export const useDelayDesigner = () => {
   const [subdivision, setSubdivisionState] = useState(CONSTANTS.DEFAULT_SUBDIVISION);
   const [routingMode, setRoutingMode] = useState("parallel");
   const [feedback, setFeedback] = useState(CONSTANTS.DEFAULT_FEEDBACK);
+  const [jitterEnabled, setJitterEnabled] = useState(false);
   const [presetName, setPresetName] = useState("MyDelay");
+
+  // Generate random jitter values for each tap (-6 to +6)
+  const generateJitterValues = useCallback(() => {
+    return Array(CONSTANTS.MAX_DELAY_TAPS)
+      .fill(0)
+      .map(() => Math.floor(Math.random() * (CONSTANTS.JITTER_MAX - CONSTANTS.JITTER_MIN + 1)) + CONSTANTS.JITTER_MIN);
+  }, []);
 
   const totalBeats = useMemo(() => beatsPerBar * barCount, [beatsPerBar, barCount]);
   const totalCells = useMemo(() => totalBeats * subdivision, [totalBeats, subdivision]);
@@ -151,15 +159,21 @@ export const useDelayDesigner = () => {
     [subdivision]
   );
 
-  const exportToZebraPreset = useCallback(() => {
-    return generateZebraPreset(taps, subdivision, routingMode, feedback);
-  }, [taps, subdivision, routingMode, feedback]);
+  const exportToZebraPreset = useCallback(
+    (jitterValues = null) => {
+      return generateZebraPreset(taps, subdivision, routingMode, feedback, jitterEnabled ? jitterValues : null);
+    },
+    [taps, subdivision, routingMode, feedback, jitterEnabled]
+  );
 
-  const downloadZebraPreset = useCallback(() => {
-    const content = generateZebraPreset(taps, subdivision, routingMode, feedback);
-    const filename = `${presetName.replace(/[^a-zA-Z0-9_-]/g, "_")}.h2p`;
-    downloadPreset(content, filename);
-  }, [taps, subdivision, routingMode, feedback, presetName]);
+  const downloadZebraPreset = useCallback(
+    (jitterValues = null) => {
+      const content = generateZebraPreset(taps, subdivision, routingMode, feedback, jitterEnabled ? jitterValues : null);
+      const filename = `${presetName.replace(/[^a-zA-Z0-9_-]/g, "_")}.h2p`;
+      downloadPreset(content, filename);
+    },
+    [taps, subdivision, routingMode, feedback, jitterEnabled, presetName]
+  );
 
   return {
     taps,
@@ -174,6 +188,8 @@ export const useDelayDesigner = () => {
     presetName,
     routingMode,
     feedback,
+    jitterEnabled,
+    generateJitterValues,
     setTempo,
     setBeatsPerBar,
     setBarCount,
@@ -181,6 +197,7 @@ export const useDelayDesigner = () => {
     setPresetName,
     setRoutingMode,
     setFeedback,
+    setJitterEnabled,
     addTap,
     removeTap,
     toggleTap,

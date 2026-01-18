@@ -18,7 +18,10 @@ export const CONSTANTS = {
   SCHEDULE_INTERVAL: 25,
   // Audio preview settings
   PREVIEW_DURATION: 3,
-  MAX_FEEDBACK_ITERATIONS: 8
+  MAX_FEEDBACK_ITERATIONS: 8,
+  // Jitter settings (random rate offset)
+  JITTER_MIN: -6,
+  JITTER_MAX: 6
 };
 
 export const SUBDIVISIONS = {

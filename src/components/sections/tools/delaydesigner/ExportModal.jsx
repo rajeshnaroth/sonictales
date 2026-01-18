@@ -2,11 +2,17 @@
 // ExportModal - Zebra preset export dialog
 // ============================================================
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { getTapColor, ROUTING_MODES } from "./constants";
 
-export const ExportModal = ({ presetContent, taps, tempo, feedback, getTapDelayInfo, routingMode, presetName, setPresetName, onDownload, onClose }) => {
+export const ExportModal = ({ taps, tempo, feedback, jitterEnabled, generateJitterValues, getTapDelayInfo, routingMode, presetName, setPresetName, exportToZebraPreset, onDownload, onClose }) => {
   const [copied, setCopied] = useState(false);
+
+  // Generate jitter values once when modal opens
+  const jitterValues = useMemo(() => generateJitterValues(), [generateJitterValues]);
+
+  // Generate preset content with jitter values
+  const presetContent = useMemo(() => exportToZebraPreset(jitterValues), [exportToZebraPreset, jitterValues]);
 
   const handleCopy = async () => {
     try {
@@ -16,6 +22,10 @@ export const ExportModal = ({ presetContent, taps, tempo, feedback, getTapDelayI
     } catch (err) {
       console.error("Failed to copy:", err);
     }
+  };
+
+  const handleDownload = () => {
+    onDownload(jitterValues);
   };
 
   const delayTaps = taps.slice(1);
@@ -45,7 +55,7 @@ export const ExportModal = ({ presetContent, taps, tempo, feedback, getTapDelayI
 
           <div className="bg-gray-900 p-3 rounded border border-gray-700">
             <div className="text-xs text-gray-500 mb-2">Summary</div>
-            <div className="grid grid-cols-4 gap-2 text-sm">
+            <div className="grid grid-cols-5 gap-2 text-sm">
               <div>
                 <span className="text-gray-400">Tempo:</span> <span className="text-gray-200">{tempo} BPM</span>
               </div>
@@ -54,6 +64,9 @@ export const ExportModal = ({ presetContent, taps, tempo, feedback, getTapDelayI
               </div>
               <div>
                 <span className="text-gray-400">Feedback:</span> <span className="text-purple-400">{feedback}%</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Jitter:</span> <span className={jitterEnabled ? "text-green-400" : "text-gray-500"}>{jitterEnabled ? "ON" : "OFF"}</span>
               </div>
               <div>
                 <span className="text-gray-400">Mode:</span> <span className="text-amber-400">{ROUTING_MODES[routingMode].label}</span>
@@ -69,14 +82,22 @@ export const ExportModal = ({ presetContent, taps, tempo, feedback, getTapDelayI
                   const info = getTapDelayInfo(tap, i + 1);
                   const color = getTapColor(i + 1);
                   const isRelative = (routingMode === "series" && i > 0) || (routingMode === "fourfour" && i % 2 === 1);
+                  const jitterOffset = jitterEnabled ? jitterValues[i] : 0;
+                  const jitteredRate = Math.max(-50, Math.min(50, info.zebraRate + jitterOffset));
                   return (
                     <div key={tap.id} className="flex items-center gap-3 text-sm">
                       <span className={`font-medium ${color.text}`}>D{i + 1}</span>
                       {isRelative && <span className="text-gray-600 text-xs">rel→</span>}
                       <span className="text-gray-200">{info.zebraNote}</span>
-                      <span className={`font-mono ${info.zebraRate === 0 ? "text-gray-500" : "text-amber-400"}`}>
-                        R:{info.zebraRate > 0 ? "+" : ""}
-                        {info.zebraRate}
+                      <span className={`font-mono ${info.zebraRate === 0 && !jitterEnabled ? "text-gray-500" : "text-amber-400"}`}>
+                        R:{jitteredRate > 0 ? "+" : ""}
+                        {jitteredRate}
+                        {jitterEnabled && jitterOffset !== 0 && (
+                          <span className="text-green-400 text-xs ml-1">
+                            ({jitterOffset > 0 ? "+" : ""}
+                            {jitterOffset})
+                          </span>
+                        )}
                       </span>
                       <span className="text-gray-500">Pan:{Math.round(tap.pan * 100)}</span>
                       <span className="text-gray-500">Gain:{Math.round(tap.gain * 100)}</span>
@@ -98,7 +119,7 @@ export const ExportModal = ({ presetContent, taps, tempo, feedback, getTapDelayI
             {copied ? "✓ Copied!" : "📋 Copy"}
           </button>
           <button
-            onClick={onDownload}
+            onClick={handleDownload}
             disabled={delayTaps.length === 0}
             className={`px-4 py-2 rounded font-medium transition-colors ${delayTaps.length === 0 ? "bg-gray-700 text-gray-500 cursor-not-allowed" : "bg-amber-600 hover:bg-amber-500 text-white"}`}
           >
