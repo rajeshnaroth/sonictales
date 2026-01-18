@@ -29,6 +29,8 @@ const TapDelayDesigner = () => {
     setPresetName,
     routingMode,
     setRoutingMode,
+    feedback,
+    setFeedback,
     setTempo,
     setBeatsPerBar,
     setBarCount,
@@ -43,7 +45,7 @@ const TapDelayDesigner = () => {
     downloadZebraPreset
   } = useDelayDesigner();
 
-  const { isPlaying, currentCell, toggle, playPing } = useAudioEngine(taps, tempo, subdivision, totalCells);
+  const { isPlaying, isPreviewing, currentCell, toggle, preview, stopPreview, playPing } = useAudioEngine(taps, tempo, subdivision, totalCells, routingMode, feedback);
 
   const handleCellClick = useCallback(
     (gridPosition) => {
@@ -78,8 +80,13 @@ const TapDelayDesigner = () => {
           setBarCount={setBarCount}
           subdivision={subdivision}
           setSubdivision={setSubdivision}
+          feedback={feedback}
+          setFeedback={setFeedback}
           isPlaying={isPlaying}
+          isPreviewing={isPreviewing}
           onTogglePlay={toggle}
+          onPreview={preview}
+          onStopPreview={stopPreview}
           onExport={handleExport}
           onClear={clearTaps}
           delayTapCount={delayTapCount}
@@ -113,6 +120,7 @@ const TapDelayDesigner = () => {
             presetContent={presetContent}
             taps={taps}
             tempo={tempo}
+            feedback={feedback}
             getTapDelayInfo={getTapDelayInfo}
             routingMode={routingMode}
             presetName={presetName}

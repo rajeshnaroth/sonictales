@@ -2,8 +2,8 @@
 // Zebra 3 preset generation utilities
 // ============================================================
 
-import { ROUTING_MODES } from './constants';
-import { findZebraNote } from './delayUtils';
+import { ROUTING_MODES } from "./constants";
+import { findZebraNote } from "./delayUtils";
 
 export const ZEBRA_HEADER = `#AM=Zebra3
 #Vers=1
@@ -64,12 +64,12 @@ export const ZEBRA_HEADER = `#AM=Zebra3
 #cm=8-Tap`;
 
 export const DEFAULT_GLOBALS = {
-  lPass: 100.00,
-  hPass: 0.00,
-  drywet: 50.00,
-  width: 100.00,
-  fdbck: 0.00,
-  panic: 0,
+  lPass: 100.0,
+  hPass: 0.0,
+  drywet: 50.0,
+  width: 100.0,
+  fdbck: 0.0,
+  panic: 0
 };
 
 /**
@@ -81,14 +81,14 @@ export const DEFAULT_GLOBALS = {
  */
 export const calculateZebraDelays = (delayTaps, subdivision, routingMode) => {
   const results = [];
-  
+
   for (let i = 0; i < delayTaps.length; i++) {
     const tap = delayTaps[i];
     const absoluteBeats = tap.gridPosition / subdivision;
     let effectiveBeats;
-    
+
     switch (routingMode) {
-      case 'series':
+      case "series":
         // Each tap is relative to the previous tap
         if (i === 0) {
           effectiveBeats = absoluteBeats;
@@ -97,8 +97,8 @@ export const calculateZebraDelays = (delayTaps, subdivision, routingMode) => {
           effectiveBeats = absoluteBeats - prevAbsoluteBeats;
         }
         break;
-        
-      case 'fourfour':
+
+      case "fourfour":
         // Odd indices (D1, D3, D5, D7 = indices 0, 2, 4, 6) are parallel
         // Even indices (D2, D4, D6, D8 = indices 1, 3, 5, 7) are relative to their pair
         if (i % 2 === 0) {
@@ -110,59 +110,61 @@ export const calculateZebraDelays = (delayTaps, subdivision, routingMode) => {
           effectiveBeats = absoluteBeats - prevAbsoluteBeats;
         }
         break;
-        
-      case 'parallel':
+
+      case "parallel":
       default:
         // All taps are absolute
         effectiveBeats = absoluteBeats;
         break;
     }
-    
+
     // Ensure we don't have negative or zero delays
     effectiveBeats = Math.max(0.001, effectiveBeats);
-    
+
     results.push({
       absoluteBeats,
       effectiveBeats,
-      zebraInfo: findZebraNote(effectiveBeats),
+      zebraInfo: findZebraNote(effectiveBeats)
     });
   }
-  
+
   return results;
 };
 
 /**
  * Generate complete Zebra .h2p preset file content
  */
-export const generateZebraPreset = (taps, subdivision, routingMode) => {
+export const generateZebraPreset = (taps, subdivision, routingMode, feedback = 0) => {
   const delayTaps = taps.filter((_, i) => i > 0);
   const zebraDelays = calculateZebraDelays(delayTaps, subdivision, routingMode);
-  
+
   // Prepare 8 tap slots
-  const tapSlots = Array(8).fill(null).map((_, i) => {
-    const tap = delayTaps[i];
-    const zebraDelay = zebraDelays[i];
-    
-    if (tap && zebraDelay) {
+  const tapSlots = Array(8)
+    .fill(null)
+    .map((_, i) => {
+      const tap = delayTaps[i];
+      const zebraDelay = zebraDelays[i];
+
+      if (tap && zebraDelay) {
+        return {
+          on: 1,
+          tpSync: zebraDelay.zebraInfo.syncIndex,
+          ratio: zebraDelay.zebraInfo.rate,
+          pan: Math.round(tap.pan * 100),
+          gain: Math.round(tap.gain * 100)
+        };
+      }
       return {
-        on: 1,
-        tpSync: zebraDelay.zebraInfo.syncIndex,
-        ratio: zebraDelay.zebraInfo.rate,
-        pan: Math.round(tap.pan * 100),
-        gain: Math.round(tap.gain * 100),
+        on: 0,
+        tpSync: 4,
+        ratio: 0,
+        pan: 0,
+        gain: 50
       };
-    }
-    return {
-      on: 0,
-      tpSync: 4,
-      ratio: 0,
-      pan: 0,
-      gain: 50,
-    };
-  });
-  
-  let content = ZEBRA_HEADER + '\n';
-  
+    });
+
+  let content = ZEBRA_HEADER + "\n";
+
   for (let i = 0; i < 8; i++) {
     content += `tpSync${i + 1}=${tapSlots[i].tpSync}\n`;
   }
@@ -175,26 +177,26 @@ export const generateZebraPreset = (taps, subdivision, routingMode) => {
   for (let i = 0; i < 8; i++) {
     content += `gain${i + 1}=${tapSlots[i].gain.toFixed(2)}\n`;
   }
-  
+
   content += `lPass=${DEFAULT_GLOBALS.lPass.toFixed(2)}\n`;
   content += `hPass=${DEFAULT_GLOBALS.hPass.toFixed(2)}\n`;
   content += `drywet=${DEFAULT_GLOBALS.drywet.toFixed(2)}\n`;
   content += `width=${DEFAULT_GLOBALS.width.toFixed(2)}\n`;
-  content += `fdbck=${DEFAULT_GLOBALS.fdbck.toFixed(2)}\n`;
+  content += `fdbck=${feedback.toFixed(2)}\n`;
   content += `rMode=${ROUTING_MODES[routingMode].value}\n`;
   content += `panic=${DEFAULT_GLOBALS.panic}\n`;
-  
+
   for (let i = 0; i < 8; i++) {
     content += `on${i + 1}=${tapSlots[i].on}\n`;
   }
-  
+
   return content;
 };
 
 export const downloadPreset = (content, filename) => {
-  const blob = new Blob([content], { type: 'text/plain' });
+  const blob = new Blob([content], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   document.body.appendChild(a);

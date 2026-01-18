@@ -21,6 +21,7 @@ export const useDelayDesigner = () => {
   const [barCount, setBarCount] = useState(CONSTANTS.DEFAULT_BAR_COUNT);
   const [subdivision, setSubdivisionState] = useState(CONSTANTS.DEFAULT_SUBDIVISION);
   const [routingMode, setRoutingMode] = useState("parallel");
+  const [feedback, setFeedback] = useState(CONSTANTS.DEFAULT_FEEDBACK);
   const [presetName, setPresetName] = useState("MyDelay");
 
   const totalBeats = useMemo(() => beatsPerBar * barCount, [beatsPerBar, barCount]);
@@ -151,14 +152,14 @@ export const useDelayDesigner = () => {
   );
 
   const exportToZebraPreset = useCallback(() => {
-    return generateZebraPreset(taps, subdivision, routingMode);
-  }, [taps, subdivision, routingMode]);
+    return generateZebraPreset(taps, subdivision, routingMode, feedback);
+  }, [taps, subdivision, routingMode, feedback]);
 
   const downloadZebraPreset = useCallback(() => {
-    const content = generateZebraPreset(taps, subdivision, routingMode);
+    const content = generateZebraPreset(taps, subdivision, routingMode, feedback);
     const filename = `${presetName.replace(/[^a-zA-Z0-9_-]/g, "_")}.h2p`;
     downloadPreset(content, filename);
-  }, [taps, subdivision, routingMode, presetName]);
+  }, [taps, subdivision, routingMode, feedback, presetName]);
 
   return {
     taps,
@@ -172,12 +173,14 @@ export const useDelayDesigner = () => {
     delayTapCount,
     presetName,
     routingMode,
+    feedback,
     setTempo,
     setBeatsPerBar,
     setBarCount,
     setSubdivision,
     setPresetName,
     setRoutingMode,
+    setFeedback,
     addTap,
     removeTap,
     toggleTap,

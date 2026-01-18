@@ -5,7 +5,7 @@
 import React, { useState } from "react";
 import { getTapColor, ROUTING_MODES } from "./constants";
 
-export const ExportModal = ({ presetContent, taps, tempo, getTapDelayInfo, routingMode, presetName, setPresetName, onDownload, onClose }) => {
+export const ExportModal = ({ presetContent, taps, tempo, feedback, getTapDelayInfo, routingMode, presetName, setPresetName, onDownload, onClose }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -45,12 +45,15 @@ export const ExportModal = ({ presetContent, taps, tempo, getTapDelayInfo, routi
 
           <div className="bg-gray-900 p-3 rounded border border-gray-700">
             <div className="text-xs text-gray-500 mb-2">Summary</div>
-            <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="grid grid-cols-4 gap-2 text-sm">
               <div>
                 <span className="text-gray-400">Tempo:</span> <span className="text-gray-200">{tempo} BPM</span>
               </div>
               <div>
                 <span className="text-gray-400">Taps:</span> <span className="text-gray-200">{delayTaps.length}</span>
+              </div>
+              <div>
+                <span className="text-gray-400">Feedback:</span> <span className="text-purple-400">{feedback}%</span>
               </div>
               <div>
                 <span className="text-gray-400">Mode:</span> <span className="text-amber-400">{ROUTING_MODES[routingMode].label}</span>
