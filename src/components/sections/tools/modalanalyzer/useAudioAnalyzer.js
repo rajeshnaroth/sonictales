@@ -135,6 +135,7 @@ export function useAudioAnalyzer() {
   );
 
   // Play synth with specific partials (for auto-play)
+  // Uses the original analyzed timeConstant values for accurate preview
   const playSynthWithPartials = useCallback(
     (partialsToPlay) => {
       if (!partialsToPlay.length || !fundamental) return;
@@ -164,7 +165,8 @@ export function useAudioAnalyzer() {
         const normalizedDb = p.gainDb - maxGainDb; // Will be 0 for loudest, negative for others
         const amp = Math.pow(10, normalizedDb / 20) * 0.8;
 
-        // Use timeConstant directly - it's already in seconds
+        // Use the original analyzed timeConstant directly - it's already in seconds
+        // This gives an accurate preview matching the original audio
         const tc = Math.max(0.01, p.timeConstant || 0.5);
 
         gain.gain.setValueAtTime(amp, ctx.currentTime);
@@ -255,7 +257,7 @@ export function useAudioAnalyzer() {
       const normalizedDb = p.gainDb - maxGainDb;
       const amp = Math.pow(10, normalizedDb / 20) * 0.8;
 
-      // Use timeConstant directly - it's already in seconds
+      // Use the original analyzed timeConstant directly - it's already in seconds
       const tc = Math.max(0.01, p.timeConstant || 0.5);
 
       gain.gain.setValueAtTime(amp, ctx.currentTime);
@@ -277,8 +279,8 @@ export function useAudioAnalyzer() {
   const getCSV = useCallback(() => {
     const enabledPartials = partials.filter((p) => p.enabled);
     if (!enabledPartials.length) return "";
-    return generateModalCSV(enabledPartials, analysisDuration);
-  }, [partials, analysisDuration]);
+    return generateModalCSV(enabledPartials);
+  }, [partials]);
   const getCSVFileName = useCallback(() => fileName.replace(/\.[^/.]+$/, "") + "_modal.csv", [fileName]);
 
   const enabledCount = partials.filter((p) => p.enabled).length;

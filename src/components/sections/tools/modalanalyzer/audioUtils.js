@@ -319,14 +319,21 @@ export async function analyzeAudio(audioBuffer, options, onProgress = () => {}) 
   return { partials, fundamental, spectrum: spectrum.slice(0, fftSize / 4), analysisDuration, effectiveDuration };
 }
 
-export function generateModalCSV(partials, analysisDuration = 2) {
-  // For Zebra 3: Decay value represents how much amplitude remains after analysisDuration
-  // Convert timeConstant to decay ratio: decayRatio = e^(-analysisDuration/timeConstant)
+export function generateModalCSV(partials) {
+  if (!partials.length) return "";
+  
+  // Find the partial closest to ratio 1.0 (the fundamental)
+  const fundamental = partials.reduce((closest, p) => 
+    Math.abs(p.ratio - 1.0) < Math.abs(closest.ratio - 1.0) ? p : closest
+  , partials[0]);
+  
+  const referenceTimeConstant = Math.max(fundamental?.timeConstant || 1, 0.01);
+
   let csv = "Ratio;GainDB;Decay\npost normalize gain: +0\n";
   partials.forEach((p) => {
-    // Convert time constant to decay ratio for Zebra compatibility
-    const decayRatio = Math.exp(-analysisDuration / Math.max(p.timeConstant, 0.01));
-    csv += `${p.ratio.toFixed(5)};${p.gainDb.toFixed(2)};${decayRatio.toFixed(6)}\n`;
+    // Normalize decay relative to fundamental's timeConstant (0-1 range)
+    const decay = Math.min(1, p.timeConstant / referenceTimeConstant);
+    csv += `${p.ratio.toFixed(5)};${p.gainDb.toFixed(2)};${decay.toFixed(6)}\n`;
   });
   return csv;
 }
