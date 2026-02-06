@@ -321,12 +321,10 @@ export async function analyzeAudio(audioBuffer, options, onProgress = () => {}) 
 
 export function generateModalCSV(partials) {
   if (!partials.length) return "";
-  
+
   // Find the partial closest to ratio 1.0 (the fundamental)
-  const fundamental = partials.reduce((closest, p) => 
-    Math.abs(p.ratio - 1.0) < Math.abs(closest.ratio - 1.0) ? p : closest
-  , partials[0]);
-  
+  const fundamental = partials.reduce((closest, p) => (Math.abs(p.ratio - 1.0) < Math.abs(closest.ratio - 1.0) ? p : closest), partials[0]);
+
   const referenceTimeConstant = Math.max(fundamental?.timeConstant || 1, 0.01);
 
   let csv = "Ratio;GainDB;Decay\npost normalize gain: +0\n";
