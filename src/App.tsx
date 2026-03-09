@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Header, Hero, Footer } from "./components/globals";
 import { WorksSection, ProductsSection, AboutSection, WorkDetail, ToolsSection } from "./components/sections";
+import ToolsPasswordGate from "./components/sections/tools/ToolsPasswordGate";
 import { AdminLogin, AdminDashboard } from "./components/admin";
 import { works as initialWorks, Work } from "./data/works";
 import { products } from "./data/products";
@@ -135,9 +136,23 @@ export default function App() {
 
                 <Route path="/sounds" element={<ProductsSection products={products} title="Sound Design" showSeeAll={false} />} />
 
-                <Route path="/tools" element={<ToolsSection onBack={() => navigate("/")} currentTool={null} onToolSelect={handleToolSelect} />} />
+                <Route
+                  path="/tools"
+                  element={
+                    <ToolsPasswordGate>
+                      <ToolsSection onBack={() => navigate("/")} currentTool={null} onToolSelect={handleToolSelect} />
+                    </ToolsPasswordGate>
+                  }
+                />
 
-                <Route path="/tools/:tool" element={<ToolRoute onBack={() => navigate("/")} onToolSelect={handleToolSelect} />} />
+                <Route
+                  path="/tools/:tool"
+                  element={
+                    <ToolsPasswordGate>
+                      <ToolRoute onBack={() => navigate("/")} onToolSelect={handleToolSelect} />
+                    </ToolsPasswordGate>
+                  }
+                />
 
                 <Route path="/about" element={<AboutSection onBack={() => navigate("/")} />} />
               </Routes>
