@@ -1,7 +1,8 @@
 import { Button } from "../../ui/button";
-import { ArrowLeft, Wrench, Clock } from "lucide-react";
+import { ArrowLeft, Wrench, Clock, Music } from "lucide-react";
 import ModalAnalyzer from "./modalanalyzer/ModalAnalyzer";
 import TapDelayDesigner from "./delaydesigner/TapDelayDesigner";
+import TuningGenerator from "./tuninggenerator/TuningGenerator";
 
 interface ToolsSectionProps {
   onBack: () => void;
@@ -33,6 +34,20 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
             Back to Tools
           </Button>
           <TapDelayDesigner />
+        </div>
+      </section>
+    );
+  }
+
+  if (currentTool === "tuning-generator") {
+    return (
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Button variant="ghost" onClick={onBack} className="mb-8 text-white/60 hover:text-white hover:bg-white/5 p-0">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tools
+          </Button>
+          <TuningGenerator />
         </div>
       </section>
     );
@@ -81,18 +96,20 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
             </div>
           </div>
 
-          {/* Placeholder for future tools */}
-          <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700 border-dashed">
+          {/* Tuning Generator Tool */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-emerald-500 transition-all duration-300 cursor-pointer" onClick={() => onToolSelect("tuning-generator")}>
             <div className="flex items-center mb-4">
-              <Wrench className="h-8 w-8 text-gray-600 mr-3" />
-              <h2 className="text-xl font-semibold text-gray-600">Coming Soon</h2>
+              <Music className="h-8 w-8 text-emerald-400 mr-3" />
+              <h2 className="text-xl font-semibold text-emerald-400">Tuning Generator</h2>
             </div>
-            <p className="text-gray-500 mb-4">More audio production tools are in development.</p>
-            <div className="text-sm text-gray-600">
-              • More analyzers
+            <p className="text-gray-300 mb-4">Generate .tun microtuning files for Zebra 3. Explore Western temperaments and non-Western scales with microtonal cent offsets.</p>
+            <div className="text-sm text-gray-400">
+              • Equal, Just, Pythagorean temperaments
               <br />
-              • Synthesis tools
-              <br />• Audio utilities
+              • Arabic, Turkish, Indian presets
+              <br />
+              • AnaMark TUN export
+              <br />• 100% client-side processing
             </div>
           </div>
         </div>
