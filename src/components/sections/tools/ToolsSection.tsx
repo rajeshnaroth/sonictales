@@ -1,8 +1,9 @@
 import { Button } from "../../ui/button";
-import { ArrowLeft, Wrench, Clock, Music } from "lucide-react";
+import { ArrowLeft, Wrench, Clock, Music, Piano } from "lucide-react";
 import ModalAnalyzer from "./modalanalyzer/ModalAnalyzer";
 import TapDelayDesigner from "./delaydesigner/TapDelayDesigner";
 import TuningGenerator from "./tuninggenerator/TuningGenerator";
+import MelodyMapper from "./melodymapper/MelodyMapper";
 
 interface ToolsSectionProps {
   onBack: () => void;
@@ -48,6 +49,20 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
             Back to Tools
           </Button>
           <TuningGenerator />
+        </div>
+      </section>
+    );
+  }
+
+  if (currentTool === "melody-mapper") {
+    return (
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Button variant="ghost" onClick={onBack} className="mb-8 text-white/60 hover:text-white hover:bg-white/5 p-0">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tools
+          </Button>
+          <MelodyMapper />
         </div>
       </section>
     );
@@ -109,6 +124,22 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
               • Arabic, Turkish, Indian presets
               <br />
               • AnaMark TUN export
+              <br />• 100% client-side processing
+            </div>
+          </div>
+          {/* Melody Mapper Tool */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-cyan-500 transition-all duration-300 cursor-pointer" onClick={() => onToolSelect("melody-mapper")}>
+            <div className="flex items-center mb-4">
+              <Piano className="h-8 w-8 text-cyan-400 mr-3" />
+              <h2 className="text-xl font-semibold text-cyan-400">Melody Mapper</h2>
+            </div>
+            <p className="text-gray-300 mb-4">Piano roll melody editor for Zebra 3. Draw melodies and export as Mapper presets with pitch and velocity control.</p>
+            <div className="text-sm text-gray-400">
+              • 128-step piano roll editor
+              <br />
+              • Pitch + velocity Mapper export
+              <br />
+              • Audio preview with tempo control
               <br />• 100% client-side processing
             </div>
           </div>
