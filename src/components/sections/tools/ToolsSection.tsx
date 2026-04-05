@@ -1,9 +1,10 @@
 import { Button } from "../../ui/button";
-import { ArrowLeft, Wrench, Clock, Music, Piano } from "lucide-react";
+import { ArrowLeft, Wrench, Clock, Music, Piano, AudioWaveform } from "lucide-react";
 import ModalAnalyzer from "./modalanalyzer/ModalAnalyzer";
 import TapDelayDesigner from "./delaydesigner/TapDelayDesigner";
 import TuningGenerator from "./tuninggenerator/TuningGenerator";
 import MelodyMapper from "./melodymapper/MelodyMapper";
+import MSEGComposer from "./msegcomposer/MSEGComposer";
 
 interface ToolsSectionProps {
   onBack: () => void;
@@ -68,6 +69,20 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
     );
   }
 
+  if (currentTool === "mseg-composer") {
+    return (
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Button variant="ghost" onClick={onBack} className="mb-8 text-white/60 hover:text-white hover:bg-white/5 p-0">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tools
+          </Button>
+          <MSEGComposer />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 px-6">
       <div className="max-w-7xl mx-auto">
@@ -127,6 +142,23 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
               <br />• 100% client-side processing
             </div>
           </div>
+          {/* MSEG Composer Tool */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-purple-500 transition-all duration-300 cursor-pointer" onClick={() => onToolSelect("mseg-composer")}>
+            <div className="flex items-center mb-4">
+              <AudioWaveform className="h-8 w-8 text-purple-400 mr-3" />
+              <h2 className="text-xl font-semibold text-purple-400">MSEG Composer</h2>
+            </div>
+            <p className="text-gray-300 mb-4">Free-time piano roll for Zebra 3 MSEG presets. Compose up to 8 melodic curves for polyphonic pitch modulation.</p>
+            <div className="text-sm text-gray-400">
+              • Continuous-time piano roll editor
+              <br />
+              • 8 independent curve tracks
+              <br />
+              • Export multi-curve MSEG presets
+              <br />• 100% client-side processing
+            </div>
+          </div>
+
           {/* Melody Mapper Tool */}
           <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-cyan-500 transition-all duration-300 cursor-pointer" onClick={() => onToolSelect("melody-mapper")}>
             <div className="flex items-center mb-4">
