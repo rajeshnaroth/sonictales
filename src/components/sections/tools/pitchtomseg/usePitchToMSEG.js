@@ -3,8 +3,9 @@
 // Manages all state + useMemo-derived data + export
 // ============================================================
 
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { resampleTo16k } from './crepe-utils';
+import { midiToHz } from '../shared/music-constants';
 import { usePitchDetection } from './usePitchDetection';
 import {
   filterByConfidence,
@@ -23,9 +24,7 @@ import {
   DEFAULT_PITCH_RANGE,
   DEFAULT_TARGET_POINTS,
   DEFAULT_HANDLE_MODE,
-  DEFAULT_PRESET_NAME,
   DEFAULT_TARGET_CURVE,
-  DEFAULT_VOLUME_PRESET_NAME,
   DEFAULT_VOLUME_TARGET_CURVE,
   DEFAULT_VOLUME_TARGET_POINTS,
   DEFAULT_SELECTION_DURATION,
@@ -57,20 +56,20 @@ export function usePitchToMSEG() {
   const [rootMidi, setRootMidi] = useState(60);
   const [pitchRange, setPitchRange] = useState(DEFAULT_PITCH_RANGE);
   const [autoDetect, setAutoDetect] = useState(true);
+  const [centOffset, setCentOffset] = useState(0); // -100 to +100 cents fine-tuning
 
   // ── Reduction ────────────────────────────────────────────────
   const [targetPoints, setTargetPoints] = useState(DEFAULT_TARGET_POINTS);
   const [handleMode, setHandleMode] = useState(DEFAULT_HANDLE_MODE);
 
   // ── Export ───────────────────────────────────────────────────
-  const [presetName, setPresetName] = useState(DEFAULT_PRESET_NAME);
+  const [presetPrefix, setPresetPrefix] = useState('');
   const [targetCurve, setTargetCurve] = useState(DEFAULT_TARGET_CURVE);
 
   // ── Volume envelope ─────────────────────────────────────────
   const [volumeFrames, setVolumeFrames] = useState(null);
   const [volumeTargetPoints, setVolumeTargetPoints] = useState(DEFAULT_VOLUME_TARGET_POINTS);
   const [volumeHandleMode, setVolumeHandleMode] = useState(DEFAULT_HANDLE_MODE);
-  const [volumePresetName, setVolumePresetName] = useState(DEFAULT_VOLUME_PRESET_NAME);
   const [volumeTargetCurve, setVolumeTargetCurve] = useState(DEFAULT_VOLUME_TARGET_CURVE);
 
   // ── Derived data (useMemo chain) ─────────────────────────────
@@ -87,8 +86,8 @@ export function usePitchToMSEG() {
     [filteredFrames]
   );
 
-  // Effective root and range (auto or manual)
-  const effectiveRoot = autoDetect ? detected.rootMidi : rootMidi;
+  // Effective root and range (auto or manual), with cent offset applied
+  const effectiveRoot = (autoDetect ? detected.rootMidi : rootMidi) + centOffset / 100;
   const effectiveRange = autoDetect ? detected.pitchRange : pitchRange;
 
   // Stage 5: Map to beats + Y (use selection duration for time mapping)
@@ -137,8 +136,15 @@ export function usePitchToMSEG() {
     const decoded = await ctx.decodeAudioData(arrayBuffer);
     ctx.close();
 
+    // Auto-derive preset prefix from filename:
+    // strip extension, take first word (split on space/dash/underscore), max 8 chars
+    const baseName = file.name.replace(/\.[^.]+$/, '');
+    const firstWord = baseName.split(/[\s\-_]/)[0];
+    const prefix = firstWord.slice(0, 8).toLowerCase();
+
     setAudioBuffer(decoded);
     setFileName(file.name);
+    setPresetPrefix(prefix);
     setSelectionStart(0);
     setSelectionEnd(Math.min(DEFAULT_SELECTION_DURATION, decoded.duration));
     setRawFrames(null);
@@ -177,30 +183,133 @@ export function usePitchToMSEG() {
     setSelectionEnd(end);
   }, []);
 
-  // ── Audio preview ─────────────────────────────────────────────
-  const previewRef = useRef(null);
+  // ── Audio preview with playhead + loop ─────────────────────────
+  const previewCtxRef = useRef(null); // { ctx, source, startedAt, offset }
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [loopEnabled, setLoopEnabled] = useState(false);
+  const [playheadTime, setPlayheadTime] = useState(null); // absolute time in file, or null
+  const animFrameRef = useRef(null);
 
-  const previewSelection = useCallback(() => {
-    if (!audioBuffer) return;
-    // Stop any existing preview
-    if (previewRef.current) {
-      try { previewRef.current.stop(); } catch (_) { /* already stopped */ }
+  const stopPreview = useCallback(() => {
+    if (animFrameRef.current) {
+      globalThis.cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
     }
+    if (previewCtxRef.current) {
+      const { ctx, source } = previewCtxRef.current;
+      try { source.stop(); } catch (_) {}
+      ctx.close();
+      previewCtxRef.current = null;
+    }
+    setIsPlaying(false);
+    setPlayheadTime(null);
+  }, []);
+
+  const startPreview = useCallback(() => {
+    if (!audioBuffer) return;
+    stopPreview();
+
     const ctx = new globalThis.AudioContext();
     const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(ctx.destination);
-    source.start(0, selectionStart, selectionEnd - selectionStart);
-    source.onended = () => ctx.close();
-    previewRef.current = source;
-  }, [audioBuffer, selectionStart, selectionEnd]);
-
-  const stopPreview = useCallback(() => {
-    if (previewRef.current) {
-      try { previewRef.current.stop(); } catch (_) { /* already stopped */ }
-      previewRef.current = null;
+    source.loop = loopEnabled;
+    if (loopEnabled) {
+      source.loopStart = selectionStart;
+      source.loopEnd = selectionEnd;
     }
+    source.start(0, selectionStart, loopEnabled ? undefined : (selectionEnd - selectionStart));
+
+    const startedAt = ctx.currentTime;
+    const offset = selectionStart;
+    const selDur = selectionEnd - selectionStart;
+    previewCtxRef.current = { ctx, source, startedAt, offset };
+    setIsPlaying(true);
+
+    source.onended = () => {
+      if (previewCtxRef.current?.ctx === ctx) {
+        stopPreview();
+      }
+    };
+
+    // Animate playhead
+    const tick = () => {
+      if (!previewCtxRef.current || previewCtxRef.current.ctx !== ctx) return;
+      const elapsed = ctx.currentTime - startedAt;
+      let pos;
+      if (loopEnabled) {
+        pos = offset + (elapsed % selDur);
+      } else {
+        pos = offset + elapsed;
+        if (pos > selectionEnd) { return; } // onended will fire
+      }
+      setPlayheadTime(pos);
+      animFrameRef.current = globalThis.requestAnimationFrame(tick);
+    };
+    animFrameRef.current = globalThis.requestAnimationFrame(tick);
+  }, [audioBuffer, selectionStart, selectionEnd, loopEnabled, stopPreview]);
+
+  const togglePreview = useCallback(() => {
+    if (isPlaying) {
+      stopPreview();
+    } else {
+      startPreview();
+    }
+  }, [isPlaying, stopPreview, startPreview]);
+
+  // ── Drone oscillator ─────────────────────────────────────────
+  const droneRef = useRef(null); // { ctx, oscs, gain }
+  const [droneActive, setDroneActive] = useState(false);
+
+  const stopDrone = useCallback(() => {
+    if (droneRef.current) {
+      const { ctx, oscs, gain } = droneRef.current;
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+      globalThis.setTimeout(() => {
+        oscs.forEach(o => { try { o.stop(); } catch (_) {} });
+        ctx.close();
+      }, 150);
+      droneRef.current = null;
+    }
+    setDroneActive(false);
   }, []);
+
+  const startDrone = useCallback((midiNote) => {
+    stopDrone();
+    const freq = midiToHz(midiNote);
+    const ctx = new globalThis.AudioContext();
+
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sine';
+    osc1.frequency.value = freq;
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.value = freq / 2;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.15;
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.3);
+
+    osc1.start();
+    osc2.start();
+    droneRef.current = { ctx, oscs: [osc1, osc2], gain };
+    setDroneActive(true);
+  }, [stopDrone]);
+
+  // Update drone frequency when centOffset or root changes
+  useEffect(() => {
+    if (!droneRef.current) return;
+    const freq = midiToHz(effectiveRoot);
+    droneRef.current.oscs[0].frequency.value = freq;
+    droneRef.current.oscs[1].frequency.value = freq / 2;
+  }, [effectiveRoot]);
 
   const doExport = useCallback((points, curveSlot, name) => {
     if (!points || points.length === 0) return;
@@ -210,15 +319,24 @@ export function usePitchToMSEG() {
     downloadH2P(content, name + '.h2p');
   }, []);
 
+  const pitchPresetName = presetPrefix ? `${presetPrefix}-pitch` : 'pitch-curve';
+  const volumePresetName = presetPrefix ? `${presetPrefix}-volume` : 'volume-curve';
+
   const exportPreset = useCallback(
-    () => doExport(msegPoints, targetCurve, presetName),
-    [doExport, msegPoints, targetCurve, presetName]
+    () => doExport(msegPoints, targetCurve, pitchPresetName),
+    [doExport, msegPoints, targetCurve, pitchPresetName]
   );
 
   const exportVolumePreset = useCallback(
     () => doExport(volumeMsegPoints, volumeTargetCurve, volumePresetName),
     [doExport, volumeMsegPoints, volumeTargetCurve, volumePresetName]
   );
+
+  // ── Cleanup on unmount ────────────────────────────────────────
+  useEffect(() => () => {
+    stopPreview();
+    stopDrone();
+  }, [stopPreview, stopDrone]);
 
   // ── Return ───────────────────────────────────────────────────
 
@@ -234,8 +352,11 @@ export function usePitchToMSEG() {
     selectionEnd,
     selectionDuration,
     setSelection,
-    previewSelection,
-    stopPreview,
+    togglePreview,
+    isPlaying,
+    loopEnabled,
+    setLoopEnabled,
+    playheadTime,
 
     // Analysis
     rawFrames,
@@ -265,6 +386,13 @@ export function usePitchToMSEG() {
     setRootMidi,
     setPitchRange,
     detected,
+    centOffset,
+    setCentOffset,
+
+    // Drone
+    droneActive,
+    startDrone,
+    stopDrone,
 
     // Reduction
     targetPoints,
@@ -273,8 +401,10 @@ export function usePitchToMSEG() {
     setHandleMode,
 
     // Export
-    presetName,
-    setPresetName,
+    presetPrefix,
+    setPresetPrefix,
+    pitchPresetName,
+    volumePresetName,
     targetCurve,
     setTargetCurve,
     exportPreset,
@@ -287,8 +417,6 @@ export function usePitchToMSEG() {
     setVolumeTargetPoints,
     volumeHandleMode,
     setVolumeHandleMode,
-    volumePresetName,
-    setVolumePresetName,
     volumeTargetCurve,
     setVolumeTargetCurve,
     exportVolumePreset,

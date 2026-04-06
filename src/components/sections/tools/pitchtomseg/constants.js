@@ -33,9 +33,7 @@ export const MAX_TARGET_POINTS = 256;
 export const DEFAULT_HANDLE_MODE = 'smooth';
 
 // Export
-export const DEFAULT_PRESET_NAME = 'pitch-curve';
 export const DEFAULT_TARGET_CURVE = 0;
-export const DEFAULT_VOLUME_PRESET_NAME = 'volume-curve';
 export const DEFAULT_VOLUME_TARGET_CURVE = 0;
 
 // Volume envelope
@@ -71,5 +69,8 @@ export const COLORS = {
 
 // Waveform selector
 export const DEFAULT_SELECTION_DURATION = 10; // seconds — default selection length
-export const WAVEFORM_SELECTOR_HEIGHT = 120;
-export const WAVEFORM_BUCKET_COUNT = 600; // number of amplitude bars
+export const MINIMAP_HEIGHT = 32;
+export const WAVEFORM_MAIN_HEIGHT = 120;
+export const WAVEFORM_BUCKET_COUNT = 800; // number of amplitude bars for full file
+export const MIN_ZOOM_DURATION = 1; // minimum visible window in seconds
+export const ZOOM_FACTOR = 1.3; // multiplier per zoom step

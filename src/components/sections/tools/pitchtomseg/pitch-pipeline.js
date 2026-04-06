@@ -96,6 +96,14 @@ export function autoDetectPitch(frames) {
 }
 
 /**
+ * Convert a time value to beats based on time mode.
+ */
+function timeToBeat(time, timeMode, tempo, totalBeats, audioDuration) {
+  if (timeMode === 'tempo') return time * (tempo / 60);
+  return time * (totalBeats / audioDuration);
+}
+
+/**
  * Map filtered frames to beat+Y coordinates.
  *
  * @param {Array<{time: number, frequency: number}>} frames
@@ -113,21 +121,10 @@ export function mapToBeatsAndY(frames, opts) {
 
   const { timeMode, tempo, totalBeats, audioDuration, rootMidi, pitchRange } = opts;
 
-  return frames.map(frame => {
-    // Time → beats
-    let x;
-    if (timeMode === 'tempo') {
-      x = frame.time * (tempo / 60);
-    } else {
-      x = frame.time * (totalBeats / audioDuration);
-    }
-
-    // Frequency → MIDI → Y (0–1)
-    const midi = hzToMidi(frame.frequency);
-    const y = midiToY(midi, rootMidi, pitchRange);
-
-    return { x, y };
-  });
+  return frames.map(frame => ({
+    x: timeToBeat(frame.time, timeMode, tempo, totalBeats, audioDuration),
+    y: midiToY(hzToMidi(frame.frequency), rootMidi, pitchRange),
+  }));
 }
 
 /**
@@ -279,13 +276,8 @@ export function mapAmplitudeToBeats(frames, opts) {
 
   const { timeMode, tempo, totalBeats, audioDuration } = opts;
 
-  return frames.map(frame => {
-    let x;
-    if (timeMode === 'tempo') {
-      x = frame.time * (tempo / 60);
-    } else {
-      x = frame.time * (totalBeats / audioDuration);
-    }
-    return { x, y: frame.amplitude };
-  });
+  return frames.map(frame => ({
+    x: timeToBeat(frame.time, timeMode, tempo, totalBeats, audioDuration),
+    y: frame.amplitude,
+  }));
 }

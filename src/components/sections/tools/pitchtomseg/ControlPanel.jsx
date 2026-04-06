@@ -33,6 +33,12 @@ const ControlPanel = ({
   onAutoDetectChange,
   onRootMidiChange,
   onPitchRangeChange,
+  centOffset,
+  onCentOffsetChange,
+  // Drone
+  droneActive,
+  onStartDrone,
+  onStopDrone,
   // Reduction
   targetPoints,
   onTargetPointsChange,
@@ -41,8 +47,10 @@ const ControlPanel = ({
   // Export
   targetCurve,
   onTargetCurveChange,
-  presetName,
-  onPresetNameChange,
+  presetPrefix,
+  onPresetPrefixChange,
+  pitchPresetName,
+  volumePresetName,
   onExport,
   // Volume
   volumeTargetPoints,
@@ -51,8 +59,6 @@ const ControlPanel = ({
   onVolumeHandleModeChange,
   volumeTargetCurve,
   onVolumeTargetCurveChange,
-  volumePresetName,
-  onVolumePresetNameChange,
   onVolumeExport,
   volumePointCount,
   // Status
@@ -185,6 +191,37 @@ const ControlPanel = ({
               </select>
             )}
           </div>
+
+          {/* Cent offset for tuning calibration */}
+          <div className="flex-1 min-w-32">
+            <label className="block text-xs text-gray-400 mb-1">
+              Tune: {centOffset > 0 ? '+' : ''}{centOffset}¢
+            </label>
+            <input
+              type="range"
+              min={-100}
+              max={100}
+              step={1}
+              value={centOffset}
+              onChange={(e) => onCentOffsetChange(Number(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          {/* Drone */}
+          <div className="flex-shrink-0">
+            <label className="block text-xs text-gray-400 mb-1">Drone</label>
+            <button
+              onClick={() => droneActive ? onStopDrone() : onStartDrone(rootMidi)}
+              className={`px-3 py-1 text-xs rounded transition-colors ${
+                droneActive
+                  ? 'bg-amber-600 text-white animate-pulse'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {droneActive ? 'Stop' : 'Play'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -243,15 +280,17 @@ const ControlPanel = ({
             </select>
           </div>
 
-          {/* Preset name */}
+          {/* Preset prefix */}
           <div className="flex-shrink-0">
-            <label className="block text-xs text-gray-400 mb-1">Name</label>
+            <label className="block text-xs text-gray-400 mb-1">
+              Name: <span className="text-gray-500">{pitchPresetName}.h2p</span>
+            </label>
             <input
               type="text"
-              value={presetName}
-              onChange={(e) => onPresetNameChange(e.target.value)}
-              className="bg-gray-700 rounded px-2 py-1 text-sm w-32"
-              placeholder="preset-name"
+              value={presetPrefix}
+              onChange={(e) => onPresetPrefixChange(e.target.value)}
+              className="bg-gray-700 rounded px-2 py-1 text-sm w-24"
+              placeholder="prefix"
             />
           </div>
 
@@ -328,16 +367,11 @@ const ControlPanel = ({
             </select>
           </div>
 
-          {/* Volume preset name */}
+          {/* Volume preset name (derived from prefix) */}
           <div className="flex-shrink-0">
-            <label className="block text-xs text-gray-400 mb-1">Name</label>
-            <input
-              type="text"
-              value={volumePresetName}
-              onChange={(e) => onVolumePresetNameChange(e.target.value)}
-              className="bg-gray-700 rounded px-2 py-1 text-sm w-32"
-              placeholder="volume-name"
-            />
+            <label className="block text-xs text-gray-400 mb-1">
+              <span className="text-gray-500">{volumePresetName}.h2p</span>
+            </label>
           </div>
 
           {/* Volume export button */}
