@@ -83,3 +83,7 @@ temp/
 
 # Storybook build outputs
 storybook-static
+
+# CREPE model weights (large binaries — see scripts/convert-crepe-h5.py)
+models/
+public/models/

@@ -1,10 +1,14 @@
+import React, { Suspense } from "react";
 import { Button } from "../../ui/button";
-import { ArrowLeft, Wrench, Clock, Music, Piano, AudioWaveform } from "lucide-react";
+import { ArrowLeft, Wrench, Clock, Music, Piano, AudioWaveform, Mic } from "lucide-react";
 import ModalAnalyzer from "./modalanalyzer/ModalAnalyzer";
 import TapDelayDesigner from "./delaydesigner/TapDelayDesigner";
 import TuningGenerator from "./tuninggenerator/TuningGenerator";
 import MelodyMapper from "./melodymapper/MelodyMapper";
 import MSEGComposer from "./msegcomposer/MSEGComposer";
+
+// Lazy load to avoid TF.js in main bundle
+const PitchToMSEG = React.lazy(() => import("./pitchtomseg/PitchToMSEG"));
 
 interface ToolsSectionProps {
   onBack: () => void;
@@ -83,6 +87,22 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
     );
   }
 
+  if (currentTool === "pitch-to-mseg") {
+    return (
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Button variant="ghost" onClick={onBack} className="mb-8 text-white/60 hover:text-white hover:bg-white/5 p-0">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tools
+          </Button>
+          <Suspense fallback={<div className="text-gray-400 text-center py-12">Loading Pitch-to-MSEG...</div>}>
+            <PitchToMSEG />
+          </Suspense>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-20 px-6">
       <div className="max-w-7xl mx-auto">
@@ -155,6 +175,23 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
               • 8 independent curve tracks
               <br />
               • Export multi-curve MSEG presets
+              <br />• 100% client-side processing
+            </div>
+          </div>
+
+          {/* Pitch to MSEG Tool */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-orange-500 transition-all duration-300 cursor-pointer" onClick={() => onToolSelect("pitch-to-mseg")}>
+            <div className="flex items-center mb-4">
+              <Mic className="h-8 w-8 text-orange-400 mr-3" />
+              <h2 className="text-xl font-semibold text-orange-400">Pitch to MSEG</h2>
+            </div>
+            <p className="text-gray-300 mb-4">Upload a monophonic recording and extract its pitch contour as a Zebra 3 MSEG preset. Capture vocal and instrument expression.</p>
+            <div className="text-sm text-gray-400">
+              • CREPE neural pitch detection
+              <br />
+              • Auto root & range detection
+              <br />
+              • Smooth, linear, step handle modes
               <br />• 100% client-side processing
             </div>
           </div>

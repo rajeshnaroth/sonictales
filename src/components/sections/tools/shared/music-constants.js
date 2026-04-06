@@ -50,6 +50,17 @@ export function getBottomMidi(rootKey) {
  * @param {string} rootKey - e.g. "C", "D", "G"
  * @returns {{ name: string, octave: number, isNatural: boolean, label: string, midi: number }}
  */
+/**
+ * Convert a MIDI note number to a human-readable name like "C4" or "A#3".
+ * @param {number} midi - MIDI note number
+ * @returns {string} Note name with octave
+ */
+export function midiToNoteName(midi) {
+  const name = NOTE_NAMES[((midi % 12) + 12) % 12];
+  const octave = Math.floor(midi / 12) - 1;
+  return `${name}${octave}`;
+}
+
 export function getRowNoteInfo(row, rootKey) {
   const midi = getBottomMidi(rootKey) + row;
   const semitone = ((midi % 12) + 12) % 12;
