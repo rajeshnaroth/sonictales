@@ -87,3 +87,14 @@ storybook-static
 # CREPE model weights (large binaries — see scripts/convert-crepe-h5.py)
 models/
 public/models/
+# Reverb IR candidate WAVs — duplicates of second-brain assets; single source of truth there
+build-output/ir-candidates/
+
+# Pitch-to-MSEG scratch outputs (underscore-prefixed locals)
+scripts/_pitch-results.json
+scripts/_ref_3curves.bin
+scripts/_test_3curve.bin
+scripts/test-pitches.wav
+
+# Zebra 3 user guide PDF — licensed, not for repo
+docs/Zebra3 user guide.pdf
