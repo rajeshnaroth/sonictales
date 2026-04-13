@@ -185,15 +185,38 @@ export function fitHandles(points, mode) {
 
 /**
  * Run the full point reduction + handle fitting pipeline.
- * Convenience wrapper combining reducePoints and fitHandles.
+ * Ensures the curve starts at x=0 and ends at exactly maxBeats
+ * so pitch and volume MSEGs have identical lengths in Zebra 3.
  *
  * @param {Array<{x: number, y: number}>} mappedPoints
  * @param {number} targetPoints
  * @param {'smooth'|'linear'|'step'} handleMode
+ * @param {number} maxBeats - Exact endpoint X value for the curve
  * @returns {Array} MSEG-ready points with handles
  */
-export function buildMSEGPoints(mappedPoints, targetPoints, handleMode) {
+export function buildMSEGPoints(mappedPoints, targetPoints, handleMode, maxBeats) {
+  if (!mappedPoints || mappedPoints.length === 0) return [];
+
   const reduced = reducePoints(mappedPoints, targetPoints);
+  if (reduced.length === 0) return [];
+
+  // Ensure curve starts at x=0
+  if (reduced[0].x > 0.001) {
+    reduced.unshift({ x: 0, y: reduced[0].y });
+  }
+
+  // Ensure curve ends at exactly maxBeats
+  const last = reduced[reduced.length - 1];
+  if (maxBeats !== undefined && Math.abs(last.x - maxBeats) > 0.001) {
+    if (last.x < maxBeats) {
+      // Extend: add a point at maxBeats holding the last Y value
+      reduced.push({ x: maxBeats, y: last.y });
+    } else {
+      // Clamp: move the last point to maxBeats
+      last.x = maxBeats;
+    }
+  }
+
   return fitHandles(reduced, handleMode);
 }
 

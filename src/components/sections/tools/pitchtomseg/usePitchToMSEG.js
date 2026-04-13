@@ -103,10 +103,15 @@ export function usePitchToMSEG() {
     [filteredFrames, timeMode, tempo, totalBeats, selectionDuration, effectiveRoot, effectiveRange]
   );
 
+  // Canonical end beat — both pitch and volume curves end here
+  const maxBeats = timeMode === 'tempo'
+    ? selectionDuration * (tempo / 60)
+    : totalBeats;
+
   // Stage 6: Reduce + fit handles
   const msegPoints = useMemo(
-    () => buildMSEGPoints(mappedPoints, targetPoints, handleMode),
-    [mappedPoints, targetPoints, handleMode]
+    () => buildMSEGPoints(mappedPoints, targetPoints, handleMode, maxBeats),
+    [mappedPoints, targetPoints, handleMode, maxBeats]
   );
 
   // ── Volume derived data ──────────────────────────────────────
@@ -122,10 +127,10 @@ export function usePitchToMSEG() {
     [volumeFrames, timeMode, tempo, totalBeats, selectionDuration]
   );
 
-  // Reduce + fit handles for volume
+  // Reduce + fit handles for volume (same maxBeats as pitch)
   const volumeMsegPoints = useMemo(
-    () => buildMSEGPoints(volumeMappedPoints, volumeTargetPoints, volumeHandleMode),
-    [volumeMappedPoints, volumeTargetPoints, volumeHandleMode]
+    () => buildMSEGPoints(volumeMappedPoints, volumeTargetPoints, volumeHandleMode, maxBeats),
+    [volumeMappedPoints, volumeTargetPoints, volumeHandleMode, maxBeats]
   );
 
   // ── Actions ──────────────────────────────────────────────────
