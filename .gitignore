@@ -87,8 +87,6 @@ storybook-static
 # CREPE model weights (large binaries — see scripts/convert-crepe-h5.py)
 models/
 public/models/
-# Reverb IR candidate WAVs — duplicates of second-brain assets; single source of truth there
-build-output/ir-candidates/
 
 # Pitch-to-MSEG scratch outputs (underscore-prefixed locals)
 scripts/_pitch-results.json
