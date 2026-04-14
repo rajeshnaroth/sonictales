@@ -1,11 +1,12 @@
 import React, { Suspense } from "react";
 import { Button } from "../../ui/button";
-import { ArrowLeft, Wrench, Clock, Music, Piano, AudioWaveform, Mic } from "lucide-react";
+import { ArrowLeft, Wrench, Clock, Music, Piano, AudioWaveform, Mic, Speaker } from "lucide-react";
 import ModalAnalyzer from "./modalanalyzer/ModalAnalyzer";
 import TapDelayDesigner from "./delaydesigner/TapDelayDesigner";
 import TuningGenerator from "./tuninggenerator/TuningGenerator";
 import MelodyMapper from "./melodymapper/MelodyMapper";
 import MSEGComposer from "./msegcomposer/MSEGComposer";
+import IRToReverb from "./irtoreverb/IRToReverb";
 
 // Lazy load to avoid TF.js in main bundle
 const PitchToMSEG = React.lazy(() => import("./pitchtomseg/PitchToMSEG"));
@@ -82,6 +83,20 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
             Back to Tools
           </Button>
           <MSEGComposer />
+        </div>
+      </section>
+    );
+  }
+
+  if (currentTool === "ir-to-reverb") {
+    return (
+      <section className="py-20 px-6">
+        <div className="max-w-7xl mx-auto">
+          <Button variant="ghost" onClick={onBack} className="mb-8 text-white/60 hover:text-white hover:bg-white/5 p-0">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Tools
+          </Button>
+          <IRToReverb />
         </div>
       </section>
     );
@@ -192,6 +207,23 @@ export function ToolsSection({ onBack, currentTool, onToolSelect }: ToolsSection
               • Auto root & range detection
               <br />
               • Smooth, linear, step handle modes
+              <br />• 100% client-side processing
+            </div>
+          </div>
+
+          {/* IR to Reverb Tool */}
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-rose-500 transition-all duration-300 cursor-pointer" onClick={() => onToolSelect("ir-to-reverb")}>
+            <div className="flex items-center mb-4">
+              <Speaker className="h-8 w-8 text-rose-400 mr-3" />
+              <h2 className="text-xl font-semibold text-rose-400">IR to Reverb</h2>
+            </div>
+            <p className="text-gray-300 mb-4">Translate an impulse response into an algorithmic Zebra 3 Reverb preset. Acoustic analysis derives the params; sliders let you tune by ear.</p>
+            <div className="text-sm text-gray-400">
+              • RT60, EDT, ITDG, density, centroid
+              <br />
+              • Heuristic IR → 8-param mapping
+              <br />
+              • Editable sliders + .h2p export
               <br />• 100% client-side processing
             </div>
           </div>

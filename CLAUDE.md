@@ -47,6 +47,7 @@ The tools are browser-based utilities for the **u-he Zebra 3** virtual synthesiz
 2. **8-Tap Delay Designer** (`/tools/tap-delay-designer`) — Visual rhythm-to-delay converter with a beat grid editor. Exports Zebra 3 delay presets. Written in JSX with a custom audio engine hook.
 3. **Tuning Generator** (`/tools/tuning-generator`) — Generates `.tun` microtuning files (AnaMark TUN format). Includes Western temperaments (Equal, Just, Pythagorean) and non-Western scales (Arabic, Turkish, Indian). Written in JSX.
 4. **Melody Mapper** (`/tools/melody-mapper`) — Piano roll melody editor exporting Zebra 3 Mapper presets (pitch + volume). 128-step grid, SVG velocity editor, audio preview. Full docs: `docs/melody-mapper.md`. Written in JSX.
+5. **IR to Reverb** (`/tools/ir-to-reverb`) — Drop an IR (WAV/MP3/FLAC), get a Zebra 3 Reverb `.h2p`. Browser-side acoustic analysis (RT60 per octave, EDT, ITDG, echo density, centroid) drives heuristic transfer functions to derive the 8 Zebra params. Editable sliders for ear-tuning before download. Plan: `docs/ir-to-reverb-tool-plan.md`. Pipeline shared with `scripts/analyze-ir.js` + `scripts/ir-to-preset.js`. Written in JSX.
 
 ### Adding a New Tool
 

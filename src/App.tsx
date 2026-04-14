@@ -149,7 +149,7 @@ export default function App() {
                   path="/tools/:tool"
                   element={
                     <ToolsPasswordGate>
-                      <ToolRoute onBack={() => navigate("/")} onToolSelect={handleToolSelect} />
+                      <ToolRoute onBack={() => navigate("/tools")} onToolSelect={handleToolSelect} />
                     </ToolsPasswordGate>
                   }
                 />
