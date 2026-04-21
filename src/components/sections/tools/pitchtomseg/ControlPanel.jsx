@@ -12,12 +12,20 @@ import {
   PITCH_RANGE_OPTIONS,
   MIN_TARGET_POINTS,
   MAX_TARGET_POINTS,
+  MIN_VOLUME_SMOOTHING_MS,
+  MAX_VOLUME_SMOOTHING_MS,
+  VOLUME_SMOOTHING_STEP_MS,
+  MIN_PITCH_SMOOTHING_MS,
+  MAX_PITCH_SMOOTHING_MS,
+  PITCH_SMOOTHING_STEP_MS,
 } from './constants';
 
 const ControlPanel = ({
   // Filter
   confidenceThreshold,
   onConfidenceChange,
+  pitchSmoothingMs,
+  onPitchSmoothingChange,
   // Time
   timeMode,
   onTimeModeChange,
@@ -61,8 +69,12 @@ const ControlPanel = ({
   onVolumeTargetCurveChange,
   onVolumeExport,
   volumePointCount,
+  volumeSmoothingMs,
+  onVolumeSmoothingChange,
   // Status
   msegPointCount,
+  // Pitch sliders lock while the pitch curve is being hand-edited
+  disabledPitch = false,
 }) => {
   return (
     <div className="space-y-3">
@@ -70,7 +82,7 @@ const ControlPanel = ({
       <div className="bg-gray-900 rounded-lg p-3">
         <div className="flex flex-wrap gap-x-6 gap-y-3 items-end">
           {/* Confidence threshold */}
-          <div className="flex-1 min-w-40">
+          <div className={`flex-1 min-w-40 ${disabledPitch ? 'opacity-40 pointer-events-none' : ''}`}>
             <label className="block text-xs text-gray-400 mb-1">
               Confidence: {confidenceThreshold.toFixed(2)}
             </label>
@@ -81,6 +93,24 @@ const ControlPanel = ({
               step={CONFIDENCE_STEP}
               value={confidenceThreshold}
               onChange={(e) => onConfidenceChange(Number(e.target.value))}
+              disabled={disabledPitch}
+              className="w-full"
+            />
+          </div>
+
+          {/* Pitch smoothing (ms) */}
+          <div className={`flex-1 min-w-40 ${disabledPitch ? 'opacity-40 pointer-events-none' : ''}`}>
+            <label className="block text-xs text-gray-400 mb-1">
+              Pitch smoothing: {pitchSmoothingMs}ms
+            </label>
+            <input
+              type="range"
+              min={MIN_PITCH_SMOOTHING_MS}
+              max={MAX_PITCH_SMOOTHING_MS}
+              step={PITCH_SMOOTHING_STEP_MS}
+              value={pitchSmoothingMs}
+              onChange={(e) => onPitchSmoothingChange(Number(e.target.value))}
+              disabled={disabledPitch}
               className="w-full"
             />
           </div>
@@ -229,7 +259,7 @@ const ControlPanel = ({
       <div className="bg-gray-900 rounded-lg p-3">
         <div className="flex flex-wrap gap-x-6 gap-y-3 items-end">
           {/* Target points */}
-          <div className="flex-1 min-w-40">
+          <div className={`flex-1 min-w-40 ${disabledPitch ? 'opacity-40 pointer-events-none' : ''}`}>
             <label className="block text-xs text-gray-400 mb-1">
               Points: {msegPointCount}/{targetPoints}
             </label>
@@ -240,18 +270,20 @@ const ControlPanel = ({
               step={8}
               value={targetPoints}
               onChange={(e) => onTargetPointsChange(Number(e.target.value))}
+              disabled={disabledPitch}
               className="w-full"
             />
           </div>
 
           {/* Handle mode */}
-          <div className="flex-shrink-0">
+          <div className={`flex-shrink-0 ${disabledPitch ? 'opacity-40 pointer-events-none' : ''}`}>
             <label className="block text-xs text-gray-400 mb-1">Handles</label>
             <div className="flex gap-1">
               {['smooth', 'linear', 'step'].map((mode) => (
                 <button
                   key={mode}
                   onClick={() => onHandleModeChange(mode)}
+                  disabled={disabledPitch}
                   className={`px-2 py-1 text-xs rounded capitalize transition-colors ${
                     handleMode === mode
                       ? 'bg-amber-600 text-white'
@@ -310,9 +342,20 @@ const ControlPanel = ({
       {/* Row 3: Volume envelope export */}
       <div className="bg-gray-900 rounded-lg p-3">
         <div className="flex flex-wrap gap-x-6 gap-y-3 items-end">
-          {/* Volume label */}
-          <div className="flex-shrink-0">
-            <span className="text-xs font-medium text-pink-400">Volume</span>
+          {/* Volume smoothing (ms) */}
+          <div className="flex-1 min-w-40">
+            <label className="block text-xs text-gray-400 mb-1">
+              Smoothing: {volumeSmoothingMs}ms
+            </label>
+            <input
+              type="range"
+              min={MIN_VOLUME_SMOOTHING_MS}
+              max={MAX_VOLUME_SMOOTHING_MS}
+              step={VOLUME_SMOOTHING_STEP_MS}
+              value={volumeSmoothingMs}
+              onChange={(e) => onVolumeSmoothingChange(Number(e.target.value))}
+              className="w-full"
+            />
           </div>
 
           {/* Volume target points */}

@@ -27,7 +27,7 @@ export const PITCH_RANGE_OPTIONS = [12, 24, 36, 48];
 export const AUTO_RANGE_PADDING = 2; // semitones padding for auto-detect
 
 // Point reduction
-export const DEFAULT_TARGET_POINTS = 256;
+export const DEFAULT_TARGET_POINTS = 128;
 export const MIN_TARGET_POINTS = 32;
 export const MAX_TARGET_POINTS = 256;
 export const DEFAULT_HANDLE_MODE = 'smooth';
@@ -36,15 +36,26 @@ export const DEFAULT_HANDLE_MODE = 'smooth';
 export const DEFAULT_TARGET_CURVE = 0;
 export const DEFAULT_VOLUME_TARGET_CURVE = 0;
 
-// Volume envelope
-export const VOLUME_SMOOTHING_WINDOW = 5; // frames for moving average
+// Volume envelope — smoothing is in ms (moving-average window around RMS)
+export const DEFAULT_VOLUME_SMOOTHING_MS = 250;
+export const MIN_VOLUME_SMOOTHING_MS = 50;
+export const MAX_VOLUME_SMOOTHING_MS = 500;
+export const VOLUME_SMOOTHING_STEP_MS = 10;
+
+// Pitch smoothing — moving-average in MIDI space. 0 = raw CREPE.
+export const DEFAULT_PITCH_SMOOTHING_MS = 50;
+export const MIN_PITCH_SMOOTHING_MS = 0;
+export const MAX_PITCH_SMOOTHING_MS = 200;
+export const PITCH_SMOOTHING_STEP_MS = 10;
+// 3-frame median (30 ms) always-on — kills isolated octave spikes.
+export const PITCH_MEDIAN_WINDOW = 3;
 
 // Canvas dimensions
 export const CANVAS_HEIGHT = 300;
 export const CANVAS_PADDING = { top: 20, right: 20, bottom: 30, left: 50 };
 
 // MSEG Preview
-export const PREVIEW_HEIGHT = 150;
+export const PREVIEW_HEIGHT = 280;
 
 // Volume target points (independent from pitch)
 export const DEFAULT_VOLUME_TARGET_POINTS = 128;
@@ -65,7 +76,13 @@ export const COLORS = {
   volumeCurve: '#ff6699',
   volumePoint: '#ff99bb',
   volumeHandle: '#885566',
+  playhead: '#ffffff',
 };
+
+// MSEG sawtooth preview
+export const MSEG_PREVIEW_CONTROL_RATE = 200; // Hz — control-curve sample rate (5ms)
+export const MSEG_PREVIEW_FADE_MS = 5;        // fade in/out to avoid clicks
+export const MSEG_PREVIEW_GAIN = 0.3;         // master volume scale for sawtooth
 
 // Waveform selector
 export const DEFAULT_SELECTION_DURATION = 10; // seconds — default selection length

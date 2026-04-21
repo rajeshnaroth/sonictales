@@ -8,7 +8,7 @@ import { PREVIEW_HEIGHT, COLORS } from './constants';
 
 const PADDING = { top: 15, right: 15, bottom: 20, left: 40 };
 
-const MSEGPreview = ({ msegPoints, totalBeats, colorScheme }) => {
+const MSEGPreview = ({ msegPoints, totalBeats, colorScheme, playheadBeats }) => {
   const curveColor = colorScheme === 'volume' ? COLORS.volumeCurve : COLORS.msegCurve;
   const pointColor = colorScheme === 'volume' ? COLORS.volumePoint : COLORS.vertexDot;
   const handleColor = colorScheme === 'volume' ? COLORS.volumeHandle : COLORS.handleLine;
@@ -201,6 +201,19 @@ const MSEGPreview = ({ msegPoints, totalBeats, colorScheme }) => {
             fill={pointColor}
           />
         ))}
+
+        {/* Playhead */}
+        {playheadBeats != null && (
+          <line
+            x1={xScale(playheadBeats)}
+            y1={PADDING.top}
+            x2={xScale(playheadBeats)}
+            y2={PADDING.top + plotH}
+            stroke={COLORS.playhead}
+            strokeWidth={1}
+            opacity={0.8}
+          />
+        )}
       </svg>
     </div>
   );

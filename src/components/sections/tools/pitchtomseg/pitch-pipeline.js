@@ -3,9 +3,9 @@
 // Stage 4–6: confidence filter, pitch mapping, handle fitting
 // ============================================================
 
-import { hzToMidi, midiToNoteName } from '../shared/music-constants';
+import { hzToMidi, midiToHz, midiToNoteName } from '../shared/music-constants';
 import { midiToY, reducePoints } from '../shared/pitch-utils';
-import { GAP_INTERPOLATION_FRAMES, AUTO_RANGE_PADDING, VOLUME_SMOOTHING_WINDOW } from './constants';
+import { GAP_INTERPOLATION_FRAMES, AUTO_RANGE_PADDING } from './constants';
 
 /**
  * Filter frames by confidence threshold.
@@ -64,6 +64,71 @@ export function filterByConfidence(frames, threshold) {
 }
 
 /**
+ * N-frame median filter on frequency (Hz). Rejects isolated outliers
+ * like CREPE's occasional single-frame octave errors without blurring
+ * vibrato. Time and confidence pass through unchanged.
+ *
+ * @param {Array<{time: number, frequency: number, confidence: number}>} frames
+ * @param {number} windowFrames - odd window size (e.g. 3)
+ * @returns {Array<{time: number, frequency: number, confidence: number}>}
+ */
+export function medianFilterFrames(frames, windowFrames) {
+  if (!frames || frames.length === 0 || windowFrames <= 1) return frames;
+  const halfWin = Math.floor(windowFrames / 2);
+  const result = new Array(frames.length);
+  const window = [];
+  for (let i = 0; i < frames.length; i++) {
+    const lo = Math.max(0, i - halfWin);
+    const hi = Math.min(frames.length, i + halfWin + 1);
+    window.length = 0;
+    for (let j = lo; j < hi; j++) window.push(frames[j].frequency);
+    window.sort((a, b) => a - b);
+    const mid = window.length >> 1;
+    const median = window.length % 2 === 1
+      ? window[mid]
+      : (window[mid - 1] + window[mid]) / 2;
+    result[i] = { ...frames[i], frequency: median };
+  }
+  return result;
+}
+
+/**
+ * Moving-average smoothing in MIDI space (perceptually linear).
+ * Frequencies are converted Hz → MIDI → averaged → converted back to Hz.
+ *
+ * @param {Array<{time: number, frequency: number, confidence: number}>} frames
+ * @param {number} windowFrames - total window size; 1 = no-op
+ * @returns {Array<{time: number, frequency: number, confidence: number}>}
+ */
+export function smoothPitchFrames(frames, windowFrames) {
+  if (!frames || frames.length === 0 || windowFrames <= 1) return frames;
+  const midis = new Float64Array(frames.length);
+  for (let i = 0; i < frames.length; i++) midis[i] = hzToMidi(frames[i].frequency);
+  const smoothed = prefixSumMovingAverage(midis, windowFrames);
+  const result = new Array(frames.length);
+  for (let i = 0; i < frames.length; i++) {
+    result[i] = { ...frames[i], frequency: midiToHz(smoothed[i]) };
+  }
+  return result;
+}
+
+// Rolling-window mean in O(N) via a prefix-sum table. Window is centered on
+// each sample; truncated at the array boundaries.
+function prefixSumMovingAverage(values, windowFrames) {
+  const n = values.length;
+  const halfWin = Math.floor(windowFrames / 2);
+  const prefix = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) prefix[i + 1] = prefix[i] + values[i];
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const lo = Math.max(0, i - halfWin);
+    const hi = Math.min(n, i + halfWin + 1);
+    out[i] = (prefix[hi] - prefix[lo]) / (hi - lo);
+  }
+  return out;
+}
+
+/**
  * Auto-detect root pitch and range from confident frames.
  * Root = rounded median MIDI. Range = nearest 12-semitone boundary with padding.
  *
@@ -79,20 +144,10 @@ export function autoDetectPitch(frames) {
   const sorted = [...midis].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)];
   const rootMidi = Math.round(median);
-
-  // Find range: distance from root to furthest note, rounded up to 12-semitone boundary
-  const minMidi = sorted[0];
-  const maxMidi = sorted[sorted.length - 1];
-  const maxDist = Math.max(
-    Math.abs(maxMidi - rootMidi),
-    Math.abs(minMidi - rootMidi)
-  );
-  const halfRange = Math.ceil(maxDist + AUTO_RANGE_PADDING);
-  const pitchRange = Math.max(12, Math.ceil(halfRange * 2 / 12) * 12);
-
   const rootNoteName = midiToNoteName(rootMidi);
 
-  return { rootMidi, pitchRange, rootNoteName };
+  // Fixed ±12 st window — the editor is built around this grid density.
+  return { rootMidi, pitchRange: 24, rootNoteName };
 }
 
 /**
@@ -229,56 +284,40 @@ export function buildMSEGPoints(mappedPoints, targetPoints, handleMode, maxBeats
  * @param {number} hopSeconds - Hop size in seconds (default 0.01 = 10ms, matching CREPE)
  * @returns {Array<{time: number, amplitude: number}>} Amplitude frames
  */
-export function extractAmplitudeEnvelope(samples, sampleRate, hopSeconds = 0.01) {
+export function extractAmplitudeEnvelope(samples, sampleRate, hopSeconds = 0.01, smoothingWindowFrames = 25) {
   const hopSamples = Math.round(sampleRate * hopSeconds);
-  const windowSamples = hopSamples * 2; // wider window for smoother RMS
+  // 50 ms RMS cell — closer to ear-timescale loudness integration than 20 ms.
+  const windowSamples = hopSamples * 5;
   const numFrames = Math.floor((samples.length - windowSamples) / hopSamples) + 1;
 
   if (numFrames <= 0) return [];
 
-  // Compute RMS per frame
   const rmsValues = new Float32Array(numFrames);
-  let maxRms = 0;
-
   for (let i = 0; i < numFrames; i++) {
     const start = i * hopSamples;
     const end = Math.min(start + windowSamples, samples.length);
     let sumSq = 0;
-    for (let s = start; s < end; s++) {
-      sumSq += samples[s] * samples[s];
-    }
-    const rms = Math.sqrt(sumSq / (end - start));
-    rmsValues[i] = rms;
-    if (rms > maxRms) maxRms = rms;
+    for (let s = start; s < end; s++) sumSq += samples[s] * samples[s];
+    rmsValues[i] = Math.sqrt(sumSq / (end - start));
   }
 
-  // Normalize to 0–1
-  if (maxRms < 1e-10) maxRms = 1;
+  const window = Math.max(1, Math.floor(smoothingWindowFrames));
+  const smoothed = prefixSumMovingAverage(rmsValues, window);
 
-  // Apply moving average smoothing
-  const smoothed = new Float32Array(numFrames);
-  const halfWin = Math.floor(VOLUME_SMOOTHING_WINDOW / 2);
-  for (let i = 0; i < numFrames; i++) {
-    let sum = 0;
-    let count = 0;
-    for (let j = i - halfWin; j <= i + halfWin; j++) {
-      if (j >= 0 && j < numFrames) {
-        sum += rmsValues[j];
-        count++;
-      }
-    }
-    smoothed[i] = (sum / count) / maxRms;
-  }
+  // Normalize by the 95th percentile of the smoothed envelope, so a single
+  // transient peak doesn't compress the rest of the curve toward zero.
+  const sortedSmoothed = Float32Array.from(smoothed).sort();
+  const pctIdx = Math.min(numFrames - 1, Math.floor(numFrames * 0.95));
+  let norm = sortedSmoothed[pctIdx];
+  if (!(norm > 1e-10)) norm = 1;
 
-  // Build output frames
-  const result = [];
+  const result = new Array(numFrames);
   for (let i = 0; i < numFrames; i++) {
-    result.push({
+    result[i] = {
       time: i * hopSeconds,
-      amplitude: Math.min(1, smoothed[i]),
-    });
+      amplitude: Math.min(1, smoothed[i] / norm),
+    };
   }
-
   return result;
 }
 

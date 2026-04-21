@@ -19,6 +19,7 @@ const PitchCurveView = ({
   totalBeats,
   timeMode,
   tempo,
+  playheadBeats,
 }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -196,9 +197,28 @@ const PitchCurveView = ({
     }
   }, [peaks, mappedPoints, msegPoints, maxBeats]);
 
+  // Playhead lives in a sibling overlay so moving it doesn't force the canvas
+  // to repaint the waveform / grid / Bezier every rAF tick.
+  const playheadPct = playheadBeats != null && maxBeats > 0
+    ? Math.max(0, Math.min(1, playheadBeats / maxBeats))
+    : null;
+
   return (
-    <div ref={containerRef} className="mb-4 bg-gray-900 rounded-lg overflow-hidden">
+    <div ref={containerRef} className="mb-4 bg-gray-900 rounded-lg overflow-hidden relative">
       <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: CANVAS_HEIGHT }} />
+      {playheadPct != null && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: `calc(${PAD.left}px + ${playheadPct} * (100% - ${PAD.left + PAD.right}px))`,
+            top: PAD.top,
+            height: CANVAS_HEIGHT - PAD.top - PAD.bottom,
+            width: 1,
+            background: COLORS.playhead,
+            opacity: 0.8,
+          }}
+        />
+      )}
     </div>
   );
 };
