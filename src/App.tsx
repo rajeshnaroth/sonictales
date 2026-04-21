@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Header, Hero, Footer } from "./components/globals";
-import { WorksSection, ProductsSection, AboutSection, WorkDetail, ToolsSection } from "./components/sections";
+import { WorksSection, ProductsSection, ProductDetail, AboutSection, WorkDetail, ToolsSection } from "./components/sections";
 import ToolsPasswordGate from "./components/sections/tools/ToolsPasswordGate";
 import { AdminLogin, AdminDashboard } from "./components/admin";
 import { works as initialWorks, Work } from "./data/works";
@@ -49,6 +49,11 @@ export default function App() {
 
   const handleFilmClick = (work: Work) => {
     navigate(`/films/${work.id}`);
+    globalThis.window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleProductClick = (id: string) => {
+    navigate(`/sounds/${id}`);
     globalThis.window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -101,9 +106,10 @@ export default function App() {
     (work) => ["5", "7", "10"].includes(work.id) // Status Change, Canopy, 3 Ghost Stories
   );
 
-  const featuredProducts = products.filter(
-    (product) => ["9", "1", "5"].includes(product.id) // Spike, Dune-Ripples, Bladerunner
-  );
+  const featuredProductIds = ["10", "9", "1"]; // Godfather, Spike, Dune-Ripples
+  const featuredProducts = featuredProductIds
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is typeof products[number] => Boolean(p));
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -124,7 +130,7 @@ export default function App() {
                   element={
                     <>
                       <Hero />
-                      <ProductsSection products={featuredProducts} title="Featured Sounds" showSeeAll={true} onSeeAllClick={() => navigate("/sounds")} />
+                      <ProductsSection products={featuredProducts} title="Featured Sounds" showSeeAll={true} onSeeAllClick={() => navigate("/sounds")} onProductClick={handleProductClick} />
                       <WorksSection works={featuredFilms} onWorkClick={handleFilmClick} title="Featured Films" showSeeAll={true} onSeeAllClick={() => navigate("/films")} />
                     </>
                   }
@@ -134,7 +140,17 @@ export default function App() {
 
                 <Route path="/films/:id" element={<FilmDetail works={works} />} />
 
-                <Route path="/sounds" element={<ProductsSection products={products} title="Sound Design" showSeeAll={false} />} />
+                <Route path="/sounds/:id" element={<SoundDetail />} />
+
+                <Route
+                  path="/sounds"
+                  element={
+                    <>
+                      <ProductsSection products={products.filter((p) => p.synth === 'zebra3')} title="Zebra 3 Patches" showSeeAll={false} onProductClick={handleProductClick} />
+                      <ProductsSection products={products.filter((p) => p.synth !== 'zebra3')} title="Zebra 2 Patches" showSeeAll={false} onProductClick={handleProductClick} />
+                    </>
+                  }
+                />
 
                 <Route
                   path="/tools"
@@ -164,6 +180,20 @@ export default function App() {
       </Routes>
     </div>
   );
+}
+
+// Component to handle individual product details
+function SoundDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const product = products.find((p) => p.id === id);
+
+  if (!product) {
+    navigate("/sounds");
+    return null;
+  }
+
+  return <ProductDetail product={product} onBack={() => navigate("/sounds")} />;
 }
 
 // Component to handle individual film details

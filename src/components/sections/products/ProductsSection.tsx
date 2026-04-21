@@ -7,9 +7,10 @@ interface ProductsSectionProps {
   title: string;
   showSeeAll: boolean;
   onSeeAllClick?: () => void;
+  onProductClick?: (id: string) => void;
 }
 
-export function ProductsSection({ products, title, showSeeAll, onSeeAllClick }: ProductsSectionProps) {
+export function ProductsSection({ products, title, showSeeAll, onSeeAllClick, onProductClick }: ProductsSectionProps) {
   const formatPrice = (price: number) => {
     if (price === 0) return "FREE";
     return `$${price}`;
@@ -67,7 +68,10 @@ export function ProductsSection({ products, title, showSeeAll, onSeeAllClick }: 
           {products.map((product) => (
             <div key={product.id} className="group bg-gray-900/50 rounded-xl overflow-hidden hover:bg-gray-900/70 transition-colors">
               {/* Square thumbnail */}
-              <div className="relative aspect-square bg-gray-900 overflow-hidden">
+              <div
+                className={`relative aspect-square bg-gray-900 overflow-hidden ${onProductClick ? "cursor-pointer" : ""}`}
+                onClick={onProductClick ? () => onProductClick(product.id) : undefined}
+              >
                 <ImageWithFallback src={product.thumbnail} alt={product.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
 
                 {/* Price badge */}
@@ -86,15 +90,10 @@ export function ProductsSection({ products, title, showSeeAll, onSeeAllClick }: 
 
                 {/* Hover overlay with play button for YouTube videos */}
                 {product.youtube_link && (
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
-                    <a
-                      href={product.youtube_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-white"
-                    >
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center pointer-events-none">
+                    <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <div className="w-0 h-0 border-l-6 border-l-black border-t-4 border-t-transparent border-b-4 border-b-transparent ml-1" />
-                    </a>
+                    </div>
                   </div>
                 )}
               </div>

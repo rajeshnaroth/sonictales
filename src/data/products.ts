@@ -1,3 +1,7 @@
+import godfatherThumb from '../assets/godfather-love-theme.png'
+
+export type SynthFamily = 'zebra3' | 'zebra2'
+
 export interface Product {
   id: string
   title: string
@@ -16,9 +20,28 @@ export interface Product {
   }
   file_size?: string
   file_type?: string
+  synth?: SynthFamily
 }
 
 export const products: Product[] = [
+  {
+    id: '10',
+    title: "New! for Zebra 3. Godfather Love Theme - Free Cinematic Hybrid patches",
+    description: "A free collection of cinematic hybrid patches for u-he Zebra 3, inspired by Nino Rota's iconic Godfather Love Theme. Strings, brass, woodwinds, and orchestral textures designed for film scoring and emotive cinematic work — built entirely in Zebra 3.",
+    rating: 5.0,
+    rating_count: null,
+    price: 0,
+    currency: "USD",
+    availability: "InStock",
+    thumbnail: godfatherThumb,
+    url: "https://sonictales.gumroad.com/l/godfather",
+    youtube_embed: "https://www.youtube.com/embed/nX8YueM4Xac",
+    youtube_link: "https://youtu.be/nX8YueM4Xac",
+    other_metadata: {
+      free: true
+    },
+    synth: 'zebra3'
+  },
   {
     id: '1',
     title: "Dune - Ripples in the Sand - Free U-he Dark ZebraHZ presets",
